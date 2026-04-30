@@ -14,7 +14,7 @@ client = gspread.authorize(creds)
 SPREADSHEET_ID = "1ydFNv3aDZb5x7JZoLFRpqSRWOnEZ93HsEjxSkrQLMgY"
 sheet = client.open_by_key(SPREADSHEET_ID).sheet1
 
-# ===== データ読み込み =====
+# ===== データ =====
 def load_data():
     data = sheet.get_all_records()
     return pd.DataFrame(data)
@@ -23,26 +23,30 @@ def save_data(df):
     sheet.clear()
     sheet.update([df.columns.values.tolist()] + df.values.tolist())
 
-# ===== 視覚表示（改善版） =====
+# ===== 視覚表示（1缶=1マス・最大5＋超過表示） =====
 def can_display(qty):
     qty = float(qty)
 
-    # 最大50個を10マスで表示（1マス=5個）
-    full = int(qty // 5)
-    remainder = qty % 5
-    half = remainder >= 2.5
+    full = int(qty)
+    half = (qty - full) >= 0.5
 
-    cans = ""
+    display = ""
 
-    for i in range(10):
+    # 最大5マス表示
+    for i in range(5):
         if i < full:
-            cans += "🟦"
+            display += "🟦"
         elif i == full and half:
-            cans += "◧"
+            display += "◧"
         else:
-            cans += "⬜"
+            display += "⬜"
 
-    return cans
+    # 5個以上は追加表示
+    if qty > 5:
+        extra = qty - 5
+        display += f" +{extra:g}"
+
+    return display
 
 # ===== UI =====
 st.title("塗料在庫管理")
