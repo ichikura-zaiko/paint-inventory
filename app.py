@@ -3,18 +3,21 @@ import pandas as pd
 import os
 
 st.set_page_config(page_title="塗料在庫管理", layout="wide")
-
 st.title("塗料在庫管理")
 
 STOCK_FILE = "paint_stock.csv"
+COLOR_FILE = "nittoko_colors.csv"
 
-# 初期データ
+if os.path.exists(COLOR_FILE):
+    color_df = pd.read_csv(COLOR_FILE)
+else:
+    color_df = pd.DataFrame(columns=["日塗工番号", "色名", "HEX"])
+
 if os.path.exists(STOCK_FILE):
     data = pd.read_csv(STOCK_FILE)
 else:
     data = pd.DataFrame(columns=["会社", "シリーズ", "No", "名称", "HEX", "保有数"])
 
-# 会社別の色
 company_colors = {
     "日塗工": "#dbeafe",
     "アクリジョン": "#dcfce7",
@@ -24,15 +27,10 @@ company_colors = {
 }
 
 def can_display(qty):
-    try:
-        qty = float(qty)
-    except:
-        qty = 0
-
+    qty = float(qty)
     full = int(qty)
     half = qty - full >= 0.5
     cans = ""
-
     for i in range(5):
         if i < full:
             cans += "🟦"
@@ -54,9 +52,25 @@ with col2:
     number = st.text_input("No / 色番号")
     name = st.text_input("名称")
 
+# 日塗工CSVから色を探す
+match = color_df[color_df["日塗工番号"] == number]
+
+if not match.empty:
+    auto_hex = match.iloc[0]["HEX"]
+    auto_name = match.iloc[0]["色名"]
+    st.success(f"{number} の色を自動表示しました")
+else:
+    auto_hex = "#999999"
+    auto_name = name
+    if number:
+        st.warning(f"{number} は nittoko_colors.csv にありません")
+
 with col3:
-    hex_color = st.color_picker("色", "#999999")
+    hex_color = st.color_picker("色", auto_hex)
     stock = st.number_input("保有数", min_value=0.0, max_value=5.0, step=0.5)
+
+if name == "" and not match.empty:
+    name = number
 
 if st.button("追加して保存"):
     new_row = pd.DataFrame(
@@ -80,24 +94,11 @@ with left:
     else:
         for idx, row in data.iterrows():
             bg = company_colors.get(row["会社"], "#e5e7eb")
-
             st.markdown(
                 f"""
-                <div style="
-                    background-color:{bg};
-                    padding:12px;
-                    border-radius:10px;
-                    margin-bottom:8px;
-                    border:1px solid #ccc;
-                ">
+                <div style="background-color:{bg}; padding:12px; border-radius:10px; margin-bottom:8px; border:1px solid #ccc;">
                     <div style="display:flex; align-items:center; gap:12px;">
-                        <div style="
-                            width:44px;
-                            height:44px;
-                            background-color:{row['HEX']};
-                            border:1px solid #555;
-                            border-radius:6px;
-                        "></div>
+                        <div style="width:44px; height:44px; background-color:{row['HEX']}; border:1px solid #555; border-radius:6px;"></div>
                         <div style="flex:1;">
                             <b>{row['会社']} / {row['シリーズ']}</b><br>
                             <span style="font-size:20px;">{row['No']}　{row['名称']}</span><br>
@@ -120,12 +121,7 @@ with right:
             st.markdown(
                 f"""
                 <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-                    <div style="
-                        width:24px;
-                        height:24px;
-                        background-color:{row['HEX']};
-                        border:1px solid #555;
-                    "></div>
+                    <div style="width:24px; height:24px; background-color:{row['HEX']}; border:1px solid #555;"></div>
                     <div>{row['No']}　{row['名称']}　{row['保有数']}缶</div>
                 </div>
                 """,
@@ -137,6 +133,5 @@ with right:
         st.metric("保有缶数", owned["保有数"].sum())
 
 st.divider()
-
 st.subheader("CSVデータ")
 st.dataframe(data, use_container_width=True)
