@@ -5,23 +5,15 @@ import os
 st.title("塗料在庫管理")
 
 CSV_FILE = "paint_stock.csv"
+COLOR_FILE = "nittoko_colors.csv"
 
-# 日塗工番号と色の対応表（仮）
-color_map = {
-    "N-95": "#F5F5F5",
-    "N-90": "#E8E8E8",
-    "N-85": "#D9D9D9",
-    "N-80": "#CCCCCC",
-    "N-70": "#B3B3B3",
-    "N-60": "#999999",
-    "N-50": "#808080",
-    "N-40": "#666666",
-    "N-30": "#4D4D4D",
-    "N-20": "#333333",
-    "N-10": "#1A1A1A",
-}
+# 日塗工カラーCSV読み込み
+if os.path.exists(COLOR_FILE):
+    color_df = pd.read_csv(COLOR_FILE)
+else:
+    color_df = pd.DataFrame(columns=["日塗工番号", "色名", "HEX"])
 
-# 保存データを読み込み
+# 在庫データ読み込み
 if os.path.exists(CSV_FILE):
     data = pd.read_csv(CSV_FILE)
 else:
@@ -29,18 +21,20 @@ else:
 
 st.subheader("在庫入力")
 
-nittoko_no = st.text_input("日塗工番号（例：N-95）")
+nittoko_no = st.text_input("日塗工番号（例：P15-60V）")
 color_name = st.text_input("色名")
 stock = st.number_input("在庫数", min_value=0)
 
-# 色番号から色を自動取得
-if nittoko_no in color_map:
-    default_color = color_map[nittoko_no]
+# CSVから色取得
+match = color_df[color_df["日塗工番号"] == nittoko_no]
+
+if not match.empty:
+    default_color = match.iloc[0]["HEX"]
     st.success(f"{nittoko_no} の色を自動表示しました")
 else:
     default_color = "#000000"
     if nittoko_no:
-        st.warning("この日塗工番号はまだ登録されていません。手動で色を選んでください。")
+        st.warning("この日塗工番号はCSVにありません")
 
 color_code = st.color_picker("色を選択", default_color)
 
