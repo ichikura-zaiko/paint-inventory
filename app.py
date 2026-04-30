@@ -1,35 +1,88 @@
 import streamlit as st
 import pandas as pd
-import os
+import gspread
 import unicodedata
+import os
 
 st.set_page_config(page_title="塗料在庫管理", layout="wide")
 st.title("塗料在庫管理")
 
-STOCK_FILE = "paint_stock.csv"
+SPREADSHEET_ID = "1ydFNv3aDZb5x7JZoLFRpqSRWOnEZ93HsEjxSkrQLMgY"
 COLOR_FILE = "nittoko_colors.csv"
+
+COLUMNS = ["得意先", "種類", "No", "名称", "HEX", "保有数"]
 
 CUSTOMERS = ["自社", "東洋紡エンジニアリング", "その他"]
 TYPES = ["アクリル", "メラミン", "粉体", "ウレタン", "エポキシ", "ラッカー", "その他"]
+
 
 def clean_code(value):
     value = str(value).strip()
     value = unicodedata.normalize("NFKC", value)
     return value.upper()
 
+
 def can_display(qty):
     qty = float(qty)
-    full = int(qty)
-    half = qty - full >= 0.5
-    cans = ""
+    blocks = ""
+    full = int(qty // 10)
+    half = (qty % 10) >= 5
+
     for i in range(5):
-        if i < full / 10:
-            cans += "🟦"
-        elif i == int(full / 10) and qty % 10 >= 5:
-            cans += "◧"
+        if i < full:
+            blocks += "🟦"
+        elif i == full and half:
+            blocks += "◧"
         else:
-            cans += "⬜"
-    return cans
+            blocks += "⬜"
+    return blocks
+
+
+@st.cache_resource
+def connect_sheet():
+    creds = dict(st.secrets["gcp_service_account"])
+    gc = gspread.service_account_from_dict(creds)
+    sh = gc.open_by_key(SPREADSHEET_ID)
+    return sh.sheet1
+
+
+sheet = connect_sheet()
+
+
+def load_data():
+    values = sheet.get_all_values()
+
+    if not values:
+        sheet.update([COLUMNS])
+        return pd.DataFrame(columns=COLUMNS)
+
+    headers = values[0]
+
+    if headers == ["会社", "種類", "No", "名称", "HEX", "保有数"]:
+        headers = COLUMNS
+        sheet.update("A1:F1", [COLUMNS])
+
+    rows = values[1:]
+    df = pd.DataFrame(rows, columns=headers)
+
+    for col in COLUMNS:
+        if col not in df.columns:
+            df[col] = ""
+
+    df = df[COLUMNS]
+    df["保有数"] = pd.to_numeric(df["保有数"], errors="coerce").fillna(0)
+    return df
+
+
+def save_data(df):
+    df = df[COLUMNS].copy()
+    df["保有数"] = pd.to_numeric(df["保有数"], errors="coerce").fillna(0)
+    rows = df.astype(str).values.tolist()
+    sheet.clear()
+    sheet.update([COLUMNS] + rows)
+
+
+data = load_data()
 
 if os.path.exists(COLOR_FILE):
     color_df = pd.read_csv(COLOR_FILE)
@@ -42,23 +95,6 @@ for col in ["日塗工番号", "色名", "HEX"]:
         color_df[col] = ""
 
 color_df["検索番号"] = color_df["日塗工番号"].apply(clean_code)
-
-if os.path.exists(STOCK_FILE):
-    data = pd.read_csv(STOCK_FILE)
-else:
-    data = pd.DataFrame(columns=["得意先", "種類", "No", "名称", "HEX", "保有数"])
-
-# 旧データ対応
-if "会社" in data.columns:
-    data = data.rename(columns={"会社": "得意先"})
-if "シリーズ" in data.columns:
-    data = data.rename(columns={"シリーズ": "種類"})
-
-for col in ["得意先", "種類", "No", "名称", "HEX", "保有数"]:
-    if col not in data.columns:
-        data[col] = ""
-
-data["保有数"] = pd.to_numeric(data["保有数"], errors="coerce").fillna(0)
 
 st.subheader("在庫入力")
 
@@ -83,8 +119,6 @@ if not match.empty:
 else:
     auto_hex = "#999999"
     name = name_input if name_input else number_clean
-    if number_clean:
-        st.warning(f"{number_clean} は nittoko_colors.csv にありません")
 
 with col3:
     hex_color = st.color_picker("色", auto_hex)
@@ -97,37 +131,37 @@ if st.button("追加 / 更新して保存", use_container_width=True):
         data["検索No"] = data["No"].apply(clean_code)
 
         if number_clean in data["検索No"].values:
-            data.loc[data["検索No"] == number_clean, ["得意先", "種類", "No", "名称", "HEX", "保有数"]] = [
+            data.loc[data["検索No"] == number_clean, COLUMNS] = [
                 customer, paint_type, number_clean, name, hex_color, stock
             ]
-            st.success("既存データを更新しました")
+            st.success("更新しました")
         else:
-            new_row = {
+            new_row = pd.DataFrame([{
                 "得意先": customer,
                 "種類": paint_type,
                 "No": number_clean,
                 "名称": name,
                 "HEX": hex_color,
                 "保有数": stock,
-            }
-            data = pd.concat([data.drop(columns=["検索No"], errors="ignore"), pd.DataFrame([new_row])], ignore_index=True)
-            st.success("新規追加しました")
+            }])
+            data = pd.concat([data.drop(columns=["検索No"], errors="ignore"), new_row], ignore_index=True)
+            st.success("追加しました")
 
         data = data.drop(columns=["検索No"], errors="ignore")
-        data.to_csv(STOCK_FILE, index=False)
+        save_data(data)
         st.rerun()
 
 st.divider()
 
 st.subheader("検索・並び替え")
 
-search_col, sort_col = st.columns([2, 1])
+c1, c2 = st.columns([2, 1])
 
-with search_col:
+with c1:
     search = st.text_input("色番号・名称・得意先・種類で検索")
 
-with sort_col:
-    sort_mode = st.selectbox("並び替え", ["色番号順", "在庫少ない順", "在庫多い順", "得意先順", "種類順"])
+with c2:
+    sort_mode = st.selectbox("並び替え", ["色番号順", "保有数順", "得意先順", "種類順"])
 
 owned = data[data["保有数"] > 0].copy()
 
@@ -142,9 +176,7 @@ if search:
 
 if sort_mode == "色番号順":
     owned = owned.sort_values("No")
-elif sort_mode == "在庫少ない順":
-    owned = owned.sort_values("保有数")
-elif sort_mode == "在庫多い順":
+elif sort_mode == "保有数順":
     owned = owned.sort_values("保有数", ascending=False)
 elif sort_mode == "得意先順":
     owned = owned.sort_values("得意先")
@@ -160,22 +192,10 @@ with left:
         st.info("該当する在庫データがありません")
     else:
         for idx, row in owned.iterrows():
-            qty = float(row["保有数"])
-
-            if qty <= 1:
-                bg = "#fee2e2"
-                alert_text = "⚠ 在庫少"
-            elif qty <= 5:
-                bg = "#fef3c7"
-                alert_text = "注意"
-            else:
-                bg = "#dbeafe"
-                alert_text = ""
-
             st.markdown(
                 f"""
                 <div style="
-                    background-color:{bg};
+                    background-color:#dbeafe;
                     padding:14px;
                     border-radius:12px;
                     margin-bottom:12px;
@@ -194,7 +214,6 @@ with left:
                             <span style="font-size:22px;">{row['No']}　{row['名称']}</span><br>
                             <span style="font-size:28px;">{can_display(row['保有数'])}</span>
                             <span style="font-size:18px;">　{row['保有数']}個</span>
-                            <span style="font-size:18px; color:#b91c1c;">　{alert_text}</span>
                         </div>
                     </div>
                 </div>
@@ -202,26 +221,26 @@ with left:
                 unsafe_allow_html=True
             )
 
-            c1, c2, c3 = st.columns([1, 1, 2])
+            b1, b2, b3 = st.columns([1, 1, 2])
 
-            with c1:
+            with b1:
                 if st.button("＋0.5", key=f"plus_{idx}", use_container_width=True):
                     data.loc[idx, "保有数"] = min(float(data.loc[idx, "保有数"]) + 0.5, 50)
-                    data.to_csv(STOCK_FILE, index=False)
+                    save_data(data)
                     st.rerun()
 
-            with c2:
+            with b2:
                 if st.button("−0.5", key=f"minus_{idx}", use_container_width=True):
                     data.loc[idx, "保有数"] = max(float(data.loc[idx, "保有数"]) - 0.5, 0)
-                    data.to_csv(STOCK_FILE, index=False)
+                    save_data(data)
                     st.rerun()
 
-            with c3:
-                confirm = st.checkbox(f"{row['No']} を削除確認", key=f"confirm_{idx}")
+            with b3:
+                confirm = st.checkbox(f"{row['No']} を本当に削除する", key=f"confirm_{idx}")
                 if st.button(f"削除 {row['No']}", key=f"delete_{idx}", use_container_width=True):
                     if confirm:
                         data = data.drop(index=idx)
-                        data.to_csv(STOCK_FILE, index=False)
+                        save_data(data)
                         st.success("削除しました")
                         st.rerun()
                     else:
@@ -234,7 +253,6 @@ with right:
         st.info("保有カラーなし")
     else:
         for _, row in owned.iterrows():
-            alert = " ⚠️" if float(row["保有数"]) <= 1 else ""
             st.markdown(
                 f"""
                 <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
@@ -244,7 +262,7 @@ with right:
                         background-color:{row['HEX']};
                         border:1px solid #555;
                     "></div>
-                    <div>{row['No']}　{row['名称']}　{row['保有数']}個{alert}</div>
+                    <div>{row['No']}　{row['名称']}　{row['保有数']}個</div>
                 </div>
                 """,
                 unsafe_allow_html=True
@@ -271,6 +289,6 @@ edited_data = st.data_editor(
 )
 
 if st.button("テーブル編集を保存", use_container_width=True):
-    edited_data.to_csv(STOCK_FILE, index=False)
-    st.success("テーブル編集を保存しました")
+    save_data(edited_data)
+    st.success("Googleスプレッドシートに保存しました")
     st.rerun()
