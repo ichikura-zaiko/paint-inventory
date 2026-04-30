@@ -291,15 +291,27 @@ with left:
                     st.rerun()
 
             with b3:
-                confirm = st.checkbox(f"{row['No']} を本当に削除する", key=f"confirm_{idx}")
-                if st.button(f"削除 {row['No']}", key=f"delete_{idx}", use_container_width=True):
-                    if confirm:
-                        data = data.drop(index=idx)
-                        save_data(data)
-                        st.success("削除しました")
+                pending_key = f"pending_delete_{idx}"
+
+                if st.session_state.get(pending_key):
+                    # 確認中: 本当に削除 / キャンセル を並べて表示
+                    ca, cb = st.columns(2)
+                    with ca:
+                        if st.button("本当に削除", key=f"confirm_yes_{idx}", use_container_width=True, type="primary"):
+                            data = data.drop(index=idx)
+                            save_data(data)
+                            st.session_state.pop(pending_key, None)
+                            st.success("削除しました")
+                            st.rerun()
+                    with cb:
+                        if st.button("キャンセル", key=f"confirm_no_{idx}", use_container_width=True):
+                            st.session_state.pop(pending_key, None)
+                            st.rerun()
+                else:
+                    # 通常: 削除ボタン
+                    if st.button(f"削除 {row['No']}", key=f"delete_{idx}", use_container_width=True):
+                        st.session_state[pending_key] = True
                         st.rerun()
-                    else:
-                        st.warning("削除する場合は確認チェックを入れてください")
 
 with right:
     st.subheader("保有カラー一覧")
