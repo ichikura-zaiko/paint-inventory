@@ -14,6 +14,21 @@ def clean_code(value):
     value = unicodedata.normalize("NFKC", value)
     return value.upper()
 
+def can_display(qty):
+    qty = float(qty)
+    full = int(qty)
+    half = qty - full >= 0.5
+    cans = ""
+    for i in range(5):
+        if i < full:
+            cans += "🟦"
+        elif i == full and half:
+            cans += "◧"
+        else:
+            cans += "⬜"
+    return cans
+
+# CSV読み込み
 if os.path.exists(COLOR_FILE):
     color_df = pd.read_csv(COLOR_FILE)
     color_df.columns = color_df.columns.str.strip()
@@ -45,20 +60,32 @@ company_colors = {
     "その他": "#e5e7eb",
 }
 
-def can_display(qty):
-    qty = float(qty)
-    full = int(qty)
-    half = qty - full >= 0.5
-    cans = ""
-
-    for i in range(5):
-        if i < full:
-            cans += "🟦"
-        elif i == full and half:
-            cans += "◧"
-        else:
-            cans += "⬜"
-    return cans
+st.markdown("""
+<style>
+.block-container {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+}
+button {
+    min-height: 42px;
+}
+input {
+    font-size: 18px !important;
+}
+@media (max-width: 768px) {
+    .block-container {
+        padding-left: 0.8rem;
+        padding-right: 0.8rem;
+    }
+    h1 {
+        font-size: 32px !important;
+    }
+    h2, h3 {
+        font-size: 24px !important;
+    }
+}
+</style>
+""", unsafe_allow_html=True)
 
 st.subheader("在庫入力")
 
@@ -78,17 +105,11 @@ match = color_df[color_df["検索番号"] == number_clean] if number_clean else 
 if not match.empty:
     auto_hex = str(match.iloc[0]["HEX"]).strip()
     auto_name = str(match.iloc[0]["色名"]).strip()
-
-    if name_input == "":
-        name = auto_name
-    else:
-        name = name_input
-
+    name = auto_name if name_input == "" else name_input
     st.success(f"{number_clean} の色を自動表示しました")
 else:
     auto_hex = "#999999"
     name = name_input if name_input else number_clean
-
     if number_clean:
         st.warning(f"{number_clean} は nittoko_colors.csv にありません")
 
@@ -96,21 +117,12 @@ with col3:
     hex_color = st.color_picker("色", auto_hex)
     stock = st.number_input("保有数", min_value=0.0, max_value=5.0, step=0.5)
 
-if st.button("追加 / 更新して保存"):
+if st.button("追加 / 更新して保存", use_container_width=True):
     if number_clean == "":
         st.error("No / 色番号を入力してください")
     else:
         if series == "":
             series = number_clean
-
-        new_row = {
-            "会社": company,
-            "シリーズ": series,
-            "No": number_clean,
-            "名称": name,
-            "HEX": hex_color,
-            "保有数": stock,
-        }
 
         data["検索No"] = data["No"].apply(clean_code)
 
@@ -120,6 +132,14 @@ if st.button("追加 / 更新して保存"):
             ]
             st.success("既存データを更新しました")
         else:
+            new_row = {
+                "会社": company,
+                "シリーズ": series,
+                "No": number_clean,
+                "名称": name,
+                "HEX": hex_color,
+                "保有数": stock,
+            }
             data = pd.concat([data.drop(columns=["検索No"], errors="ignore"), pd.DataFrame([new_row])], ignore_index=True)
             st.success("新規追加しました")
 
@@ -129,40 +149,60 @@ if st.button("追加 / 更新して保存"):
 
 st.divider()
 
-left, right = st.columns([2, 1])
+st.subheader("検索")
+
+search = st.text_input("色番号・名称・会社・シリーズで検索")
 
 owned = data[data["保有数"] > 0].copy()
+
+if search:
+    s = clean_code(search)
+    owned = owned[
+        owned["No"].astype(str).apply(clean_code).str.contains(s, na=False)
+        | owned["名称"].astype(str).apply(clean_code).str.contains(s, na=False)
+        | owned["会社"].astype(str).apply(clean_code).str.contains(s, na=False)
+        | owned["シリーズ"].astype(str).apply(clean_code).str.contains(s, na=False)
+    ]
+
+left, right = st.columns([2, 1])
 
 with left:
     st.subheader("保有リスト")
 
     if len(owned) == 0:
-        st.info("まだ在庫データがありません")
+        st.info("該当する在庫データがありません")
     else:
-        for _, row in owned.iterrows():
-            bg = company_colors.get(row["会社"], "#e5e7eb")
+        for idx, row in owned.iterrows():
+            qty = float(row["保有数"])
+
+            if qty <= 0:
+                bg = "#fee2e2"
+            elif qty <= 1:
+                bg = "#fef3c7"
+            else:
+                bg = company_colors.get(row["会社"], "#e5e7eb")
 
             st.markdown(
                 f"""
                 <div style="
                     background-color:{bg};
                     padding:14px;
-                    border-radius:10px;
-                    margin-bottom:10px;
+                    border-radius:12px;
+                    margin-bottom:12px;
                     border:1px solid #ccc;
                 ">
-                    <div style="display:flex; align-items:center; gap:14px;">
+                    <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
                         <div style="
-                            width:52px;
-                            height:52px;
+                            width:56px;
+                            height:56px;
                             background-color:{row['HEX']};
                             border:1px solid #555;
                             border-radius:8px;
                         "></div>
-                        <div style="flex:1;">
+                        <div style="flex:1; min-width:220px;">
                             <b>{row['会社']} / {row['シリーズ']}</b><br>
                             <span style="font-size:22px;">{row['No']}　{row['名称']}</span><br>
-                            <span style="font-size:26px;">{can_display(row['保有数'])}</span>
+                            <span style="font-size:28px;">{can_display(row['保有数'])}</span>
                             <span style="font-size:18px;">　{row['保有数']}缶</span>
                         </div>
                     </div>
@@ -171,6 +211,26 @@ with left:
                 unsafe_allow_html=True
             )
 
+            c1, c2, c3 = st.columns([1, 1, 2])
+
+            with c1:
+                if st.button(f"＋0.5", key=f"plus_{idx}", use_container_width=True):
+                    data.loc[idx, "保有数"] = min(float(data.loc[idx, "保有数"]) + 0.5, 5)
+                    data.to_csv(STOCK_FILE, index=False)
+                    st.rerun()
+
+            with c2:
+                if st.button(f"−0.5", key=f"minus_{idx}", use_container_width=True):
+                    data.loc[idx, "保有数"] = max(float(data.loc[idx, "保有数"]) - 0.5, 0)
+                    data.to_csv(STOCK_FILE, index=False)
+                    st.rerun()
+
+            with c3:
+                if st.button(f"削除 {row['No']}", key=f"delete_{idx}", use_container_width=True):
+                    data = data.drop(index=idx)
+                    data.to_csv(STOCK_FILE, index=False)
+                    st.rerun()
+
 with right:
     st.subheader("保有カラー一覧")
 
@@ -178,16 +238,19 @@ with right:
         st.info("保有カラーなし")
     else:
         for _, row in owned.iterrows():
+            qty = float(row["保有数"])
+            alert = " ⚠️" if qty <= 1 else ""
+
             st.markdown(
                 f"""
                 <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
                     <div style="
-                        width:26px;
-                        height:26px;
+                        width:28px;
+                        height:28px;
                         background-color:{row['HEX']};
                         border:1px solid #555;
                     "></div>
-                    <div>{row['No']}　{row['名称']}　{row['保有数']}缶</div>
+                    <div>{row['No']}　{row['名称']}　{row['保有数']}缶{alert}</div>
                 </div>
                 """,
                 unsafe_allow_html=True
@@ -196,6 +259,10 @@ with right:
         st.divider()
         st.metric("保有色数", len(owned))
         st.metric("保有缶数", owned["保有数"].sum())
+
+        low_stock = owned[owned["保有数"] <= 1]
+        if len(low_stock) > 0:
+            st.warning(f"在庫少：{len(low_stock)}色あります")
 
 st.divider()
 
