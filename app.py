@@ -2,66 +2,141 @@ import streamlit as st
 import pandas as pd
 import os
 
+st.set_page_config(page_title="塗料在庫管理", layout="wide")
+
 st.title("塗料在庫管理")
 
-CSV_FILE = "paint_stock.csv"
-COLOR_FILE = "nittoko_colors.csv"
+STOCK_FILE = "paint_stock.csv"
 
-# 日塗工カラーCSV読み込み
-if os.path.exists(COLOR_FILE):
-    color_df = pd.read_csv(COLOR_FILE)
+# 初期データ
+if os.path.exists(STOCK_FILE):
+    data = pd.read_csv(STOCK_FILE)
 else:
-    color_df = pd.DataFrame(columns=["日塗工番号", "色名", "HEX"])
+    data = pd.DataFrame(columns=["会社", "シリーズ", "No", "名称", "HEX", "保有数"])
 
-# 在庫データ読み込み
-if os.path.exists(CSV_FILE):
-    data = pd.read_csv(CSV_FILE)
-else:
-    data = pd.DataFrame(columns=["日塗工番号", "色名", "在庫数", "色コード"])
+# 会社別の色
+company_colors = {
+    "日塗工": "#dbeafe",
+    "アクリジョン": "#dcfce7",
+    "タミヤ": "#fef3c7",
+    "ガイア": "#fce7f3",
+    "その他": "#e5e7eb",
+}
+
+def can_display(qty):
+    try:
+        qty = float(qty)
+    except:
+        qty = 0
+
+    full = int(qty)
+    half = qty - full >= 0.5
+    cans = ""
+
+    for i in range(5):
+        if i < full:
+            cans += "🟦"
+        elif i == full and half:
+            cans += "◧"
+        else:
+            cans += "⬜"
+    return cans
 
 st.subheader("在庫入力")
 
-nittoko_no = st.text_input("日塗工番号（例：P15-60V）")
-color_name = st.text_input("色名")
-stock = st.number_input("在庫数", min_value=0)
+col1, col2, col3 = st.columns(3)
 
-# CSVから色取得
-match = color_df[color_df["日塗工番号"] == nittoko_no]
+with col1:
+    company = st.selectbox("会社", ["日塗工", "アクリジョン", "タミヤ", "ガイア", "その他"])
+    series = st.text_input("シリーズ", value="")
 
-if not match.empty:
-    default_color = match.iloc[0]["HEX"]
-    st.success(f"{nittoko_no} の色を自動表示しました")
-else:
-    default_color = "#000000"
-    if nittoko_no:
-        st.warning("この日塗工番号はCSVにありません")
+with col2:
+    number = st.text_input("No / 色番号")
+    name = st.text_input("名称")
 
-color_code = st.color_picker("色を選択", default_color)
+with col3:
+    hex_color = st.color_picker("色", "#999999")
+    stock = st.number_input("保有数", min_value=0.0, max_value=5.0, step=0.5)
 
 if st.button("追加して保存"):
-    new_data = pd.DataFrame(
-        [[nittoko_no, color_name, stock, color_code]],
-        columns=["日塗工番号", "色名", "在庫数", "色コード"]
+    new_row = pd.DataFrame(
+        [[company, series, number, name, hex_color, stock]],
+        columns=["会社", "シリーズ", "No", "名称", "HEX", "保有数"]
     )
-
-    data = pd.concat([data, new_data], ignore_index=True)
-    data.to_csv(CSV_FILE, index=False)
-
+    data = pd.concat([data, new_row], ignore_index=True)
+    data.to_csv(STOCK_FILE, index=False)
     st.success("保存しました")
+    st.rerun()
 
-st.subheader("在庫一覧")
+st.divider()
 
-if len(data) == 0:
-    st.info("まだ在庫データがありません")
-else:
-    for i, row in data.iterrows():
-        st.markdown(f"### {row['日塗工番号']}　{row['色名']}")
-        st.markdown(f"在庫数: {row['在庫数']}")
-        st.markdown(
-            f"<div style='width:120px;height:50px;background-color:{row['色コード']};border:1px solid #999;'></div>",
-            unsafe_allow_html=True
-        )
+left, right = st.columns([2, 1])
+
+with left:
+    st.subheader("保有リスト")
+
+    if len(data) == 0:
+        st.info("まだ在庫データがありません")
+    else:
+        for idx, row in data.iterrows():
+            bg = company_colors.get(row["会社"], "#e5e7eb")
+
+            st.markdown(
+                f"""
+                <div style="
+                    background-color:{bg};
+                    padding:12px;
+                    border-radius:10px;
+                    margin-bottom:8px;
+                    border:1px solid #ccc;
+                ">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <div style="
+                            width:44px;
+                            height:44px;
+                            background-color:{row['HEX']};
+                            border:1px solid #555;
+                            border-radius:6px;
+                        "></div>
+                        <div style="flex:1;">
+                            <b>{row['会社']} / {row['シリーズ']}</b><br>
+                            <span style="font-size:20px;">{row['No']}　{row['名称']}</span><br>
+                            <span style="font-size:24px;">{can_display(row['保有数'])}</span>
+                            <span>　{row['保有数']}缶</span>
+                        </div>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+with right:
+    st.subheader("保有カラー一覧")
+
+    if len(data) > 0:
+        owned = data[data["保有数"] > 0]
+
+        for _, row in owned.iterrows():
+            st.markdown(
+                f"""
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+                    <div style="
+                        width:24px;
+                        height:24px;
+                        background-color:{row['HEX']};
+                        border:1px solid #555;
+                    "></div>
+                    <div>{row['No']}　{row['名称']}　{row['保有数']}缶</div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
         st.divider()
+        st.metric("保有色数", len(owned))
+        st.metric("保有缶数", owned["保有数"].sum())
+
+st.divider()
 
 st.subheader("CSVデータ")
-st.dataframe(data)
+st.dataframe(data, use_container_width=True)
