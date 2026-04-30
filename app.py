@@ -9,7 +9,7 @@ import re
 st.set_page_config(page_title="塗料在庫管理", layout="wide")
 st.title("塗料在庫管理")
 
-SPREADSHEET_ID = "1ydFNv3aDZb5x7JZoLFRpqSRWOnEZ93HsEjxSkrQLMgY"
+SPREADSHEET_ID = "1BnRviQ1S5rEDFVX3NCkLfGQpm9Jrq1xtFkfDLHba3z0"
 COLOR_FILE = "nittoko_colors.csv"
 
 COLUMNS = ["得意先", "種類", "No", "名称", "HEX", "保有数"]
