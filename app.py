@@ -1,34 +1,41 @@
 import streamlit as st
 import pandas as pd
 import os
+import unicodedata
 
 st.set_page_config(page_title="塗料在庫管理", layout="wide")
-
 st.title("塗料在庫管理")
 
 STOCK_FILE = "paint_stock.csv"
 COLOR_FILE = "nittoko_colors.csv"
 
-# 日塗工カラーCSV読み込み
+def clean_code(value):
+    value = str(value).strip()
+    value = unicodedata.normalize("NFKC", value)
+    return value.upper()
+
 if os.path.exists(COLOR_FILE):
     color_df = pd.read_csv(COLOR_FILE)
     color_df.columns = color_df.columns.str.strip()
 else:
     color_df = pd.DataFrame(columns=["日塗工番号", "色名", "HEX"])
 
-# 在庫CSV読み込み
+for col in ["日塗工番号", "色名", "HEX"]:
+    if col not in color_df.columns:
+        color_df[col] = ""
+
+color_df["検索番号"] = color_df["日塗工番号"].apply(clean_code)
+
 if os.path.exists(STOCK_FILE):
     data = pd.read_csv(STOCK_FILE)
 else:
     data = pd.DataFrame(columns=["会社", "シリーズ", "No", "名称", "HEX", "保有数"])
 
-# 必要列がなければ作る
 for col in ["会社", "シリーズ", "No", "名称", "HEX", "保有数"]:
     if col not in data.columns:
         data[col] = ""
 
-if "保有数" in data.columns:
-    data["保有数"] = pd.to_numeric(data["保有数"], errors="coerce").fillna(0)
+data["保有数"] = pd.to_numeric(data["保有数"], errors="coerce").fillna(0)
 
 company_colors = {
     "日塗工": "#dbeafe",
@@ -62,56 +69,61 @@ with col1:
     series = st.text_input("シリーズ")
 
 with col2:
-    number = st.text_input("No / 色番号").strip()
-    name = st.text_input("名称")
+    number = st.text_input("No / 色番号")
+    number_clean = clean_code(number)
+    name_input = st.text_input("名称")
 
-# 日塗工カラー検索
-match = color_df[color_df["日塗工番号"].astype(str).str.strip() == number] if number else pd.DataFrame()
+match = color_df[color_df["検索番号"] == number_clean] if number_clean else pd.DataFrame()
 
 if not match.empty:
     auto_hex = str(match.iloc[0]["HEX"]).strip()
     auto_name = str(match.iloc[0]["色名"]).strip()
 
-    if name == "":
+    if name_input == "":
         name = auto_name
+    else:
+        name = name_input
 
-    st.success(f"{number} の色を自動表示しました")
+    st.success(f"{number_clean} の色を自動表示しました")
 else:
     auto_hex = "#999999"
-    if number:
-        st.warning(f"{number} は nittoko_colors.csv にありません")
+    name = name_input if name_input else number_clean
+
+    if number_clean:
+        st.warning(f"{number_clean} は nittoko_colors.csv にありません")
 
 with col3:
     hex_color = st.color_picker("色", auto_hex)
     stock = st.number_input("保有数", min_value=0.0, max_value=5.0, step=0.5)
 
-# 追加・更新
 if st.button("追加 / 更新して保存"):
-    if number == "":
+    if number_clean == "":
         st.error("No / 色番号を入力してください")
     else:
-        if name == "":
-            name = number
+        if series == "":
+            series = number_clean
 
         new_row = {
             "会社": company,
             "シリーズ": series,
-            "No": number,
+            "No": number_clean,
             "名称": name,
             "HEX": hex_color,
             "保有数": stock,
         }
 
-        # 同じNoがあれば上書き、なければ追加
-        if not data.empty and number in data["No"].astype(str).values:
-            data.loc[data["No"].astype(str) == number, ["会社", "シリーズ", "名称", "HEX", "保有数"]] = [
-                company, series, name, hex_color, stock
+        data["検索No"] = data["No"].apply(clean_code)
+
+        if number_clean in data["検索No"].values:
+            data.loc[data["検索No"] == number_clean, ["会社", "シリーズ", "No", "名称", "HEX", "保有数"]] = [
+                company, series, number_clean, name, hex_color, stock
             ]
             st.success("既存データを更新しました")
         else:
-            data = pd.concat([data, pd.DataFrame([new_row])], ignore_index=True)
+            data = pd.concat([data.drop(columns=["検索No"], errors="ignore"), pd.DataFrame([new_row])], ignore_index=True)
             st.success("新規追加しました")
 
+        data = data.drop(columns=["検索No"], errors="ignore")
         data.to_csv(STOCK_FILE, index=False)
         st.rerun()
 
@@ -119,15 +131,15 @@ st.divider()
 
 left, right = st.columns([2, 1])
 
+owned = data[data["保有数"] > 0].copy()
+
 with left:
     st.subheader("保有リスト")
 
-    owned_data = data[data["保有数"] > 0].copy()
-
-    if len(owned_data) == 0:
+    if len(owned) == 0:
         st.info("まだ在庫データがありません")
     else:
-        for idx, row in owned_data.iterrows():
+        for _, row in owned.iterrows():
             bg = company_colors.get(row["会社"], "#e5e7eb")
 
             st.markdown(
@@ -161,8 +173,6 @@ with left:
 
 with right:
     st.subheader("保有カラー一覧")
-
-    owned = data[data["保有数"] > 0].copy()
 
     if len(owned) == 0:
         st.info("保有カラーなし")
