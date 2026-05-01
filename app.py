@@ -287,8 +287,31 @@ def load_color_master():
 
 
 def color_lookup(number, color_df):
+    """日塗工CSVから色名・HEXを探す。
+    入力ゆれ対策として、完全一致のほかにハイフンなし・スペースなしでも照合する。
+    例：90-25A / 9025A、N-5 / N5 など。
+    """
     number_clean = clean_code(number)
+
+    if number_clean == "":
+        return "", "#999999", False
+
+    def key(value):
+        value = clean_code(value)
+        value = value.replace("-", "")
+        value = value.replace(" ", "")
+        value = value.replace("　", "")
+        return value
+
+    # 完全一致
     match = color_df[color_df["検索番号"] == number_clean]
+
+    # ゆれ吸収一致
+    if match.empty:
+        search_key = key(number_clean)
+        tmp = color_df.copy()
+        tmp["検索キー"] = tmp["検索番号"].apply(key)
+        match = tmp[tmp["検索キー"] == search_key]
 
     if not match.empty:
         hex_value = normalize_hex(match.iloc[0]["HEX"])
