@@ -332,26 +332,31 @@ def load_data(sheet, color_df):
     df["保有数"] = df["保有数"].apply(normalize_stock)
 
     # HEXを自動補完する。
-    # 1. シートのHEXが正しい場合はそれを優先
-    # 2. 空欄・不正な場合は nittoko_colors.csv から取得
-    # 3. 名称が空欄の場合も nittoko_colors.csv から補完
+    # 1. シートのHEXが正しい場合は、シート側を優先する
+    # 2. HEXが空欄・不正・仮グレーの場合だけ nittoko_colors.csv から取得する
+    # 3. 名称が空欄の場合も nittoko_colors.csv から補完する
+    #
+    # 注意：CSVを常に優先すると、スプレッドシートで手修正したHEXが
+    # アプリ側で上書きされるため、ここではシート側の有効HEXを優先する。
     changed = False
     fixed_hex_list = []
     fixed_name_list = []
 
+    DEFAULT_GRAY_VALUES = {"", "#999999", "#929396"}
+
     for _, row in df.iterrows():
-        raw_hex = str(row["HEX"]).strip()
+        raw_hex = str(row["HEX"]).strip().upper()
         raw_name = str(row["名称"]).strip()
         auto_name, auto_hex, found_color = color_lookup(row["No"], color_df)
 
-        # 日塗工CSVに該当番号がある場合は、シート側HEXよりCSVを優先する。
-        # これにより、過去に #999999 や #929396 で保存された色も正しいHEXに更新できる。
-        if found_color:
+        if is_valid_hex(raw_hex) and raw_hex not in DEFAULT_GRAY_VALUES:
+            fixed_hex = raw_hex
+        elif found_color:
             fixed_hex = auto_hex
-            if fixed_hex != raw_hex.upper():
+            if fixed_hex != raw_hex:
                 changed = True
         elif is_valid_hex(raw_hex):
-            fixed_hex = raw_hex.upper()
+            fixed_hex = raw_hex
         else:
             fixed_hex = "#999999"
             if fixed_hex != raw_hex:
