@@ -5,6 +5,8 @@ from google.oauth2.service_account import Credentials
 import unicodedata
 import os
 import re
+from datetime import datetime
+from datetime import datetime
 
 
 # =========================
@@ -19,13 +21,13 @@ st.caption("Googleスプレッドシート直結・キャッシュなし")
 # 基本設定
 # =========================
 SPREADSHEET_ID = "1BnRviQ1S5rEDFVX3NCkLfGQpm9Jrq1xtFkfDLHba3z0"
-COLOR_FILE = "nittoko_colors.csv"
-
-INVENTORY_SHEET = "在庫"
+COLORINVENTORY_SHEET = "在庫"
+HISTORY_SHEET = "履歴"
 CUSTOMER_MASTER_SHEET = "得意先マスタ"
-TYPE_MASTER_SHEET = "種類マスタ"
-
-COLUMNS = ["得意先", "種類", "No", "名称", "HEX", "保有数"]
+TYPE_MASTER_SHEET = "種類マスタ"MACOLUMNS = ["得意先", "種類", "No", "名称", "HEX", "保有数"]
+HISTORY_COLUMNS = ["日時", "操作", "得意先", "種類", "No", "名称", "変更前", "変更後", "差分", "メモ"]
+MASTER_COLUMNS = ["名称"], "No", "名称", "HEX", "保有数"]
+HISTORY_COLUMNS = ["日時", "操作", "得意先", "種類", "No", "名称", "変更前", "変更後", "差分", "メモ"]
 MASTER_COLUMNS = ["名称"]
 
 DEFAULT_CUSTOMERS = ["自社", "東洋紡エンジニアリング", "その他"]
@@ -228,22 +230,18 @@ def ensure_master_has_default_values(ws, defaults):
     読み取り回数節約のためA列だけ確認する。
     """
     values = ws.col_values(1)
-    if len(values) >= 2:
-        return
-    ws.clear()
-    ws.update([["名称"]] + [[x] for x in defaults], "A1")
-
-
-@st.cache_resource(ttl=3600)
-def get_sheets():
+    if ledef get_sheets():
     """ワークシートオブジェクトはキャッシュする。
     実データ load_data はキャッシュしないので、在庫変更は反映される。
     """
     spreadsheet = connect_spreadsheet()
     inventory_ws = get_or_create_worksheet(spreadsheet, INVENTORY_SHEET, COLUMNS)
+    history_ws = get_or_create_worksheet(spreadsheet, HISTORY_SHEET, HISTORY_COLUMNS)
     customer_ws = get_or_create_worksheet(spreadsheet, CUSTOMER_MASTER_SHEET, MASTER_COLUMNS)
     type_ws = get_or_create_worksheet(spreadsheet, TYPE_MASTER_SHEET, MASTER_COLUMNS)
-    return inventory_ws, customer_ws, type_ws
+    return inventory_ws, history_ws, customer_ws, type_wsstomer_ws = get_or_create_worksheet(spreadsheet, CUSTOMER_MASTER_SHEET, MASTER_COLUMNS)
+    type_ws = get_or_create_worksheet(spreadsheet, TYPE_MASTER_SHEET, MASTER_COLUMNS)
+    return inventory_ws, history_ws, customer_ws, type_ws
 
 
 # =========================
@@ -436,6 +434,23 @@ def save_data(sheet, df):
     sheet.update([COLUMNS] + df.astype(str).values.tolist(), "A1")
 
 
+def append_history(history_sheet, operation, row, before_qty="", after_qty="", diff="", memo=""):
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    history_row = [
+        now,
+        operation,
+        str(row.get("得意先", "")),
+        str(row.get("種類", "")),
+        str(row.get("No", "")),
+        str(row.get("名称", "")),
+        str(before_qty),
+        str(after_qty),
+        str(diff),
+        str(memo),
+    ]
+    history_sheet.append_row(history_row, value_input_option="USER_ENTERED")
+
+
 def add_or_update_data(data, customer, paint_type, number_clean, name, hex_color, stock):
     data = data.copy()
     data["検索No"] = data["No"].apply(clean_code)
@@ -462,7 +477,7 @@ def add_or_update_data(data, customer, paint_type, number_clean, name, hex_color
                 "保有数": stock,
             }
         ])
-        data = pd.concat([data.drop(columns=["検索No"], errors="ignore"), new_row], ignore_index=True)
+   _row], ignore_index=True)
 
     return data.drop(columns=["検索No"], errors="ignore")
 
@@ -471,7 +486,7 @@ def add_or_update_data(data, customer, paint_type, number_clean, name, hex_color
 # 初期読み込み
 # =========================
 try:
-    inventory_sheet, customer_master_sheet, type_master_sheet = get_sheets()
+    inventory_sheet, history_sheet, customer_master_sheet, type_master_sheet = get_sheets()
     color_df = load_color_master()
     customers = load_master_by_sheet_name(CUSTOMER_MASTER_SHEET, DEFAULT_CUSTOMERS)
     types = load_master_by_sheet_name(TYPE_MASTER_SHEET, DEFAULT_TYPES)
@@ -540,14 +555,18 @@ name = name_input if name_input else auto_name
 with col3:
     hex_color = st.color_picker("色", auto_hex)
     stock = st.number_input("保有数", min_value=0.0, max_value=MAX_STOCK, step=STEP)
-    st.markdown(f"<div>{can_display_html(stock, hex_color)}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div>{can_display_html(stock, hex_color)}</div>", unsafe_allow_html=Tran
+        if existing_mask.any():
+            before_qty = data.loc[existing_mask, "保有数"].iloc[0]
 
-if st.button("追加 / 更新して保存", type="primary", use_container_width=True):
-    if number_clean == "":
-        st.error("No / 色番号を入力してください")
-    else:
         data = add_or_update_data(data, customer, paint_type, number_clean, name, hex_color, stock)
         save_data(inventory_sheet, data)
+
+        saved_row = data.loc[data["No"].apply(clean_code) == number_clean].iloc[0]
+        operation = "追加" if before_qty == "" else "更新"
+        diff = "" if before_qty == "" else normalize_stock(stock) - normalize_stock(before_qty)
+        append_history(history_sheet, operation, saved_row, before_qty, stock, diff, "入力フォーム")
+
         st.success("保存しました")
         st.rerun()
 
@@ -621,28 +640,82 @@ with left:
 
             b1, b2, b3 = st.columns([1, 1, 2])
 
-            with b1:
-                if st.button("＋0.5", key=f"plus_{idx}", use_container_width=True):
-                    data.loc[idx, "保有数"] = min(float(data.loc[idx, "保有数"]) + STEP, MAX_STOCK)
+            wit("−0.5", key=f"minus_{idx}", use_container_width=True):
+                    before_qty = normalize_stock(data.loc[idx, "保有数"])
+                    after_qty = max(before_qty - STEP, 0)
+                    data.loc[idx, "保有数"] = after_qty
                     save_data(inventory_sheet, data)
-                    st.rerun()
-
-            with b2:
-                if st.button("−0.5", key=f"minus_{idx}", use_container_width=True):
-                    data.loc[idx, "保有数"] = max(float(data.loc[idx, "保有数"]) - STEP, 0)
-                    save_data(inventory_sheet, data)
+                    append_history(history_sheet, "出庫", data.loc[idx], before_qty, after_qty, after_qty - before_qty, "保有リスト -0.5")
                     st.rerun()
 
             with b3:
+                edit_key = f"edit_{idx}"
                 pending_key = f"pending_delete_{idx}"
+
+                e1, e2 = st.columns(2)
+                with e1:
+                    if st.button("編集", key=f"edit_button_{idx}", use_container_width=True):
+                        st.session_state[edit_key] = not st.session_state.get(edit_key, False)
+                        st.rerun()
+
+                with e2:
+                    if st.button(f"削除 {row['No']}", key=f"delete_{idx}", use_container_width=True):
+                        st.sesse=str(row["名称"]), key=f"edit_name_{idx}")
+
+                        with ec2:
+                            edit_hex = st.color_picker("色", normalize_hex(row["HEX"]), key=f"edit_hex_{idx}")
+                            edit_qty = st.number_input(
+                                "保有数",
+                                min_value=0.0,
+                                max_value=MAX_STOCK,
+                                step=STEP,
+                                value=normalize_stock(row["保有数"]),
+                                key=f"edit_qty_{idx}",
+                            )
+                            st.markdown(f"<div>{can_display_html(edit_qty, edit_hex)}</div>", unsafe_allow_html=True)
+
+                        memo = st.text_input("メモ", value="保有リストから編集", key=f"edit_memo_{idx}")
+                        s1, s2 = st.columns(2)
+                        with s1:
+                            submitted = st.form_submit_button("変更を保存", use_container_width=True)
+                        with s2:
+                            cancelled = st.form_submit_button("キャンセル", use_container_width=True)
+
+                        if submitted:
+                            before_qty = normalize_stock(data.loc[idx, "保有数"])
+                            data.loc[idx, "得意先"] = edit_customer
+                            data.loc[idx, "種類"] = edit_type
+                            data.loc[idx, "名称"] = edit_name
+                            data.loc[idx, "HEX"] = edit_hex
+                            data.loc[idx, "保有数"] = edit_qty
+                            save_data(inventory_sheet, data)
+                            append_history(
+                                history_sheet,
+                                "編集",
+                                data.loc[idx],
+                                before_qty,
+                                edit_qty,
+                                normalize_stock(edit_qty) - before_qty,
+                                memo,
+                            )
+                            st.session_state.pop(edit_key, None)
+                            st.success("変更しました")
+                            st.rerun()
+
+                        if cancelled:
+                            st.session_state.pop(edit_key, None)
+                            st.rerun()
 
                 if st.session_state.get(pending_key):
                     ca, cb = st.columns(2)
 
                     with ca:
                         if st.button("本当に削除", key=f"confirm_yes_{idx}", use_container_width=True):
+                            deleted_row = data.loc[idx].copy()
+                            before_qty = normalize_stock(deleted_row["保有数"])
                             data = data.drop(index=idx)
                             save_data(inventory_sheet, data)
+                            append_history(history_sheet, "削除", deleted_row, before_qty, 0, -before_qty, "保有リストから削除")
                             st.session_state.pop(pending_key, None)
                             st.success("削除しました")
                             st.rerun()
@@ -651,10 +724,6 @@ with left:
                         if st.button("キャンセル", key=f"confirm_no_{idx}", use_container_width=True):
                             st.session_state.pop(pending_key, None)
                             st.rerun()
-                else:
-                    if st.button(f"削除 {row['No']}", key=f"delete_{idx}", use_container_width=True):
-                        st.session_state[pending_key] = True
-                        st.rerun()
 
 
 # =========================
@@ -706,8 +775,37 @@ edited_data = st.data_editor(
 
 if st.button("テーブル編集を保存", use_container_width=True):
     save_data(inventory_sheet, edited_data)
+    append_history(
+        history_sheet,
+        "テーブル編集",
+        {"得意先": "", "種類": "", "No": "一括", "名称": "直接テーブル編集"},
+        "",
+        "",
+        "",
+        "直接テーブル編集で保存",
+    )
     st.success("Googleスプレッドシートに保存しました")
     st.rerun()
+
+st.divider()
+
+
+# =========================
+# 履歴表示
+# =========================
+st.subheader("変更履歴")
+
+try:
+    history_values = history_sheet.get_all_values()
+    if len(history_values) <= 1:
+        st.info("まだ履歴はありません。")
+    else:
+        history_df = pd.DataFrame(history_values[1:], columns=history_values[0])
+        history_df = history_df.tail(30).iloc[::-1]
+        st.dataframe(history_df, use_container_width=True, hide_index=True)
+except Exception as e:
+    st.warning("履歴の読み込みに失敗しました。")
+    st.caption(str(e))
 
 st.divider()
 
