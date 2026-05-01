@@ -636,15 +636,15 @@ if is_mobile:
         f"""<div style="display:flex;gap:0;margin-bottom:4px;background:#f8fafc;
                 border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
             <div style="flex:1;text-align:center;padding:5px 2px;border-right:1px solid #e2e8f0;">
-                <div style="font-size:0.6rem;color:#64748b;">件数</div>
+                <div style="font-size:0.6rem;color:#64748b;">件数 / Items</div>
                 <div style="font-size:1.1rem;font-weight:700;line-height:1.2;">{len(data)}</div>
             </div>
             <div style="flex:1;text-align:center;padding:5px 2px;border-right:1px solid #e2e8f0;">
-                <div style="font-size:0.6rem;color:#64748b;">総保有数</div>
+                <div style="font-size:0.6rem;color:#64748b;">総保有数 / Stock</div>
                 <div style="font-size:1.1rem;font-weight:700;line-height:1.2;">{total_stock:g}</div>
             </div>
             <div style="flex:1;text-align:center;padding:5px 2px;">
-                <div style="font-size:0.6rem;color:#64748b;">発注中</div>
+                <div style="font-size:0.6rem;color:#64748b;">発注中 / Order</div>
                 <div style="font-size:1.1rem;font-weight:700;line-height:1.2;color:{"#f59e0b" if order_count > 0 else "#1e293b"};">{order_count}</div>
             </div>
         </div>""",
@@ -652,11 +652,11 @@ if is_mobile:
     )
     mb1, mb2 = st.columns(2)
     with mb1:
-        if st.button("🔄 再読み込み", use_container_width=True):
+        if st.button("🔄 再読み込み / Reload", use_container_width=True):
             load_color_master.clear()
             st.rerun()
     with mb2:
-        if st.button("💻 PCモードへ", use_container_width=True):
+        if st.button("💻 PC モード / PC Mode", use_container_width=True):
             st.session_state["mobile_mode"] = False
             st.rerun()
 else:
@@ -668,7 +668,7 @@ else:
     with top3:
         st.metric("発注中 / Ordering", order_count)
     with top4:
-        if st.button("🔄 再読み込み", use_container_width=True):
+        if st.button("🔄 再読み込み / Reload", use_container_width=True):
             load_color_master.clear()
             st.rerun()
     with top5:
@@ -689,17 +689,17 @@ if is_mobile:
     # スマホ：検索を先に・入力はexpander
     # =========================
     # 検索バー（最上部）
-    search = st.text_input("🔍 番号・名称・場所", placeholder="Search...", label_visibility="collapsed")
+    search = st.text_input("🔍 番号・名称・場所 / Search", placeholder="No. / Name / Location...", label_visibility="collapsed")
     sf1, sf2 = st.columns(2)
     with sf1:
         order_filter = st.selectbox("発注状況", ["All／すべて"] + ORDER_OPTIONS, label_visibility="collapsed")
     with sf2:
-        sort_mode = st.selectbox("並び替え", ["色番号順", "保有数順", "場所順", "入荷日順"], label_visibility="collapsed")
+        sort_mode = st.selectbox("並び替え / Sort", ["色番号順 / No.", "保有数順 / Stock", "場所順 / Location", "入荷日順 / Date"], label_visibility="collapsed")
     gloss_filter = "All／すべて"
     location_filter = ""
 
     # 在庫入力は折りたたみ
-    with st.expander("➕ 在庫を追加・更新する"):
+    with st.expander("➕ 在庫を追加・更新する / Add or Update Stock"):
         number = st.text_input("No / 色番号", placeholder="例: 05-40X")
         number_clean = clean_code(number)
         auto_name, auto_hex, found_color = color_lookup(number_clean, color_df)
@@ -708,32 +708,32 @@ if is_mobile:
                 st.success(f"✅ {number_clean}　{auto_name}")
             else:
                 st.warning(f"⚠️ {number_clean} は色マスタにありません")
-        name_input = st.text_input("名称", value=auto_name)
+        name_input = st.text_input("名称 / Name", value=auto_name)
         name = name_input if name_input else auto_name
         fa1, fa2 = st.columns(2)
         with fa1:
-            customer = st.selectbox("得意先", customers)
+            customer = st.selectbox("得意先 / Customer", customers)
         with fa2:
-            paint_type = st.selectbox("種類", types)
+            paint_type = st.selectbox("種類 / Type", types)
         fb1, fb2 = st.columns(2)
         with fb1:
-            hex_color = st.color_picker("色", auto_hex)
+            hex_color = st.color_picker("色 / Color", auto_hex)
         with fb2:
-            gloss = st.selectbox("艶", GLOSS_OPTIONS)
+            gloss = st.selectbox("艶 / Finish", GLOSS_OPTIONS)
         fc1, fc2 = st.columns(2)
         with fc1:
-            stock = st.number_input("保有数", min_value=0.0, max_value=MAX_STOCK, step=STEP, value=0.0)
+            stock = st.number_input("保有数 / Stock", min_value=0.0, max_value=MAX_STOCK, step=STEP, value=0.0)
         with fc2:
-            order_status_input = st.selectbox("発注状況", ORDER_OPTIONS)
+            order_status_input = st.selectbox("発注状況 / Order", ORDER_OPTIONS)
         fd1, fd2 = st.columns(2)
         with fd1:
-            received_date = st.date_input("入荷日", value=datetime.now().date())
+            received_date = st.date_input("入荷日 / Received", value=datetime.now().date())
         with fd2:
-            location = st.text_input("保管場所", placeholder="例: A-1")
+            location = st.text_input("保管場所 / Location", placeholder="例: A-1")
         st.markdown(f"<div style='margin:4px 0;'>{can_display_html(stock, hex_color)}</div>", unsafe_allow_html=True)
-        if st.button("💾 保存する", type="primary", use_container_width=True):
+        if st.button("💾 保存する / Save", type="primary", use_container_width=True):
             if number_clean == "":
-                st.error("色番号を入力してください")
+                st.error("色番号を入力してください / Please enter Color No.")
             else:
                 before_qty = ""
                 existing_mask = data["No"].apply(clean_code) == number_clean
@@ -748,7 +748,7 @@ if is_mobile:
                 operation = "追加" if before_qty == "" else "更新"
                 diff = "" if before_qty == "" else normalize_stock(stock) - normalize_stock(before_qty)
                 append_history(history_sheet, operation, saved_row, before_qty, stock, diff, "SP入力")
-                st.success("保存しました！")
+                st.success("保存しました！ / Saved!")
                 st.rerun()
 
 else:
@@ -845,17 +845,17 @@ if location_filter:
     lf = clean_code(location_filter)
     owned = owned[owned["保管場所"].astype(str).apply(clean_code).str.contains(lf, na=False)]
 
-if sort_mode == "色番号順":
+if sort_mode in ["色番号順", "色番号順 / No."]:
     owned = owned.sort_values("No")
-elif sort_mode == "保有数順":
+elif sort_mode in ["保有数順", "保有数順 / Stock"]:
     owned = owned.sort_values("保有数", ascending=False)
 elif sort_mode == "得意先順":
     owned = owned.sort_values("得意先")
 elif sort_mode == "種類順":
     owned = owned.sort_values("種類")
-elif sort_mode == "場所順":
+elif sort_mode in ["場所順", "場所順 / Location"]:
     owned = owned.sort_values("保管場所")
-elif sort_mode == "入荷日順":
+elif sort_mode in ["入荷日順", "入荷日順 / Date"]:
     owned = owned.sort_values("入荷日")
 
 # =========================
