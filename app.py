@@ -293,9 +293,9 @@ def color_lookup(number, color_df):
     if not match.empty:
         hex_value = normalize_hex(match.iloc[0]["HEX"])
         name_value = str(match.iloc[0]["色名"]).strip()
-        return name_value, hex_value
+        return name_value, hex_value, True
 
-    return number_clean, "#999999"
+    return number_clean, "#999999", False
 
 
 # =========================
@@ -342,12 +342,18 @@ def load_data(sheet, color_df):
     for _, row in df.iterrows():
         raw_hex = str(row["HEX"]).strip()
         raw_name = str(row["名称"]).strip()
-        auto_name, auto_hex = color_lookup(row["No"], color_df)
+        auto_name, auto_hex, found_color = color_lookup(row["No"], color_df)
 
-        if is_valid_hex(raw_hex):
+        # 日塗工CSVに該当番号がある場合は、シート側HEXよりCSVを優先する。
+        # これにより、過去に #999999 や #929396 で保存された色も正しいHEXに更新できる。
+        if found_color:
+            fixed_hex = auto_hex
+            if fixed_hex != raw_hex.upper():
+                changed = True
+        elif is_valid_hex(raw_hex):
             fixed_hex = raw_hex.upper()
         else:
-            fixed_hex = auto_hex
+            fixed_hex = "#999999"
             if fixed_hex != raw_hex:
                 changed = True
 
@@ -469,10 +475,10 @@ with col2:
     number_clean = clean_code(number)
     name_input = st.text_input("名称")
 
-auto_name, auto_hex = color_lookup(number_clean, color_df)
+auto_name, auto_hex, found_color = color_lookup(number_clean, color_df)
 
 if number_clean:
-    if auto_hex != "#999999":
+    if found_color:
         st.success(f"{number_clean} の色を自動表示しました")
     else:
         st.warning(f"{number_clean} は nittoko_colors.csv にありません")
