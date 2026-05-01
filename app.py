@@ -132,6 +132,12 @@ st.markdown(
 # =========================
 # 共通関数
 # =========================
+
+def unit_label(qty):
+    return "pc" if float(qty) == 1 else "pcs"
+
+
+# =========================
 def clean_code(value):
     if value is None:
         return ""
@@ -610,6 +616,9 @@ c1, c2 = st.columns([2, 1])
 
 with c1:
     search = st.text_input("色番号・名称・得意先・種類で検索 / Search by Color No., Name, Customer, Type")
+    gloss_filter = st.selectbox("艶フィルター / Finish Filter", ["All"] + GLOSS_OPTIONS)
+
+("色番号・名称・得意先・種類で検索 / Search by Color No., Name, Customer, Type")
 
 with c2:
     sort_mode = st.selectbox("並び替え / Sort", ["色番号順", "保有数順", "得意先順", "種類順"])
@@ -618,12 +627,18 @@ owned = data[data["保有数"] > 0].copy()
 
 if search:
     s = clean_code(search)
+
     owned = owned[
         owned["No"].astype(str).apply(clean_code).str.contains(s, na=False)
         | owned["名称"].astype(str).apply(clean_code).str.contains(s, na=False)
         | owned["得意先"].astype(str).apply(clean_code).str.contains(s, na=False)
         | owned["種類"].astype(str).apply(clean_code).str.contains(s, na=False)
     ]
+
+# 艶フィルター
+if gloss_filter != "All":
+    owned = owned[owned["艶"] == gloss_filter]
+
 
 if sort_mode == "色番号順":
     owned = owned.sort_values("No")
@@ -659,7 +674,7 @@ with left:
                             <span class="paint-no-name">{row['No']}　{row['名称']}</span><br>
                             <span class="gloss-badge">{row['艶'] if str(row['艶']).strip() else '艶未設定'}</span><br>
                             <span>{can_display_html(row['保有数'], display_hex)}</span>
-                            <span style="font-size:18px; margin-left:10px; vertical-align:middle;">{row['保有数']:g}個</span>
+                            <span style="font-size:18px; margin-left:10px; vertical-align:middle;">{row['保有数']:g} {unit_label(row['保有数'])}</span>
                         </div>
                     </div>
                 </div>
@@ -809,7 +824,7 @@ with right:
                 f"""
                 <div class="small-color-row">
                     <div class="small-color-chip" style="background-color:{display_hex};"></div>
-                    <div>{row['No']}　{row['名称']}　{row['保有数']:g}個</div>
+                    <div>{row['No']}　{row['名称']}　{row['保有数']:g} {unit_label(row['保有数'])}</div>
                 </div>
                 """,
                 unsafe_allow_html=True,
