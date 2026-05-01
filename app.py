@@ -27,7 +27,7 @@ HISTORY_SHEET = "履歴"
 CUSTOMER_MASTER_SHEET = "得意先マスタ"
 TYPE_MASTER_SHEET = "種類マスタ"
 
-COLUMNS = ["得意先", "種類", "No", "名称", "HEX", "艶", "保有数"]
+COLUMNS = ["得意先", "種類", "No", "名称", "HEX", "艶", "保有数", "入荷日"]
 HISTORY_COLUMNS = ["日時", "操作", "得意先", "種類", "No", "名称", "変更前", "変更後", "差分", "メモ"]
 MASTER_COLUMNS = ["名称"]
 
@@ -132,6 +132,31 @@ st.markdown(
 # =========================
 # 共通関数
 # =========================
+
+def today_str():
+    return datetime.now().strftime("%Y-%m-%d")
+
+
+def shelf_life_days(paint_type):
+    return 365 if "粉体" in str(paint_type) else 60
+
+
+def expiry_info(received_date, paint_type):
+    try:
+        received = pd.to_datetime(received_date).date()
+    except Exception:
+        return "入荷日未設定 / No received date", "#6b7280"
+
+    days = shelf_life_days(paint_type)
+    expire_date = received + pd.Timedelta(days=days)
+    remaining = (expire_date - datetime.now().date()).days
+
+    if remaining < 0:
+        return f"期限切れ / Expired {abs(remaining)} days ago", "#dc2626"
+    if remaining <= 14:
+        return f"期限近い / {remaining} days left", "#d97706"
+    return f"期限 / Exp. {expire_date.strftime('%Y-%m-%d')} ({remaining} days left)", "#374151"
+
 
 def unit_label(qty):
     return "pc" if float(qty) == 1 else "pcs"
@@ -389,6 +414,10 @@ def load_data(sheet, color_df):
     df["No"] = df["No"].astype(str).apply(clean_code)
     df["名称"] = df["名称"].astype(str)
     df["保有数"] = df["保有数"].apply(normalize_stock)
+    df["入荷日"] = df["入荷日"].astype(str)
+    df.loc[df["入荷日"].str.strip() == "", "入荷日"] = today_str()
+    df["入荷日"] = df["入荷日"].astype(str)
+    df.loc[df["入荷日"].str.strip() == "", "入荷日"] = today_str()
 
     # HEXを自動補完する。
     # 1. シートのHEXが正しい場合は、シート側を優先する
@@ -475,7 +504,7 @@ def append_history(history_sheet, operation, row, before_qty="", after_qty="", d
     history_sheet.append_row(history_row, value_input_option="USER_ENTERED")
 
 
-def add_or_update_data(data, customer, paint_type, number_clean, name, hex_color, gloss, stock):
+def add_or_update_data(data, customer, paint_type, number_clean, name, hex_color, gloss, stock, received_date):
     data = data.copy()
     data["検索No"] = data["No"].apply(clean_code)
 
@@ -490,6 +519,7 @@ def add_or_update_data(data, customer, paint_type, number_clean, name, hex_color
             hex_color,
             gloss,
             stock,
+            received_date,
         ]
     else:
         new_row = pd.DataFrame([
@@ -501,6 +531,7 @@ def add_or_update_data(data, customer, paint_type, number_clean, name, hex_color
                 "HEX": hex_color,
                 "艶": gloss,
                 "保有数": stock,
+                "入荷日": received_date,
             }
         ])
         data = pd.concat([data.drop(columns=["検索No"], errors="ignore"), new_row], ignore_index=True)
@@ -582,6 +613,7 @@ with col3:
     hex_color = st.color_picker("色 / Color", auto_hex)
     gloss = st.selectbox("艶 / Finish", GLOSS_OPTIONS)
     stock = st.number_input("保有数 / Stock", min_value=0.0, max_value=MAX_STOCK, step=STEP)
+    received_date = st.date_input("入荷日 / Received Date", value=datetime.now().date())
     st.markdown(f"<div>{can_display_html(stock, hex_color)}</div>", unsafe_allow_html=True)
 
 if st.button("追加 / 更新して保存 / Add or Update", type="primary", use_container_width=True):
@@ -593,7 +625,7 @@ if st.button("追加 / 更新して保存 / Add or Update", type="primary", use_
         if existing_mask.any():
             before_qty = data.loc[existing_mask, "保有数"].iloc[0]
 
-        data = add_or_update_data(data, customer, paint_type, number_clean, name, hex_color, gloss, stock)
+        data = add_or_update_data(data, customer, paint_type, number_clean, name, hex_color, gloss, stock, received_date.strftime("%Y-%m-%d"))
         save_data(inventory_sheet, data)
 
         saved_row = data.loc[data["No"].apply(clean_code) == number_clean].iloc[0]
@@ -663,6 +695,7 @@ with left:
     else:
         for idx, row in owned.iterrows():
             display_hex = normalize_hex(row["HEX"])
+            expiry_text, expiry_color = expiry_info(row.get("入荷日", ""), row.get("種類", ""))
 
             st.markdown(
                 f"""
@@ -672,7 +705,8 @@ with left:
                         <div class="paint-info">
                             <b>{row['得意先']} / {row['種類']}</b><br>
                             <span class="paint-no-name">{row['No']}　{row['名称']}</span><br>
-                            <span class="gloss-badge">{row['艶'] if str(row['艶']).strip() else '艶未設定'}</span><br>
+                            <span class="gloss-badge">{row['艶'] if str(row['艶']).strip() else '艶未設定'}</span>
+                            <span class="gloss-badge" style="color:{expiry_color};">入荷日 / Received: {row.get('入荷日', '')} ｜ {expiry_text}</span><br>
                             <span>{can_display_html(row['保有数'], display_hex)}</span>
                             <span style="font-size:18px; margin-left:10px; vertical-align:middle;">{row['保有数']:g} {unit_label(row['保有数'])}</span>
                         </div>
@@ -753,6 +787,15 @@ with left:
                                 value=normalize_stock(row["保有数"]),
                                 key=f"edit_qty_{idx}",
                             )
+                            try:
+                                default_received = pd.to_datetime(row.get("入荷日", today_str())).date()
+                            except Exception:
+                                default_received = datetime.now().date()
+                            edit_received_date = st.date_input(
+                                "入荷日 / Received Date",
+                                value=default_received,
+                                key=f"edit_received_{idx}",
+                            )
                             st.markdown(f"<div>{can_display_html(edit_qty, edit_hex)}</div>", unsafe_allow_html=True)
 
                         memo = st.text_input("メモ / Memo", value="保有リストから編集", key=f"edit_memo_{idx}")
@@ -770,6 +813,7 @@ with left:
                             data.loc[idx, "HEX"] = edit_hex
                             data.loc[idx, "艶"] = edit_gloss
                             data.loc[idx, "保有数"] = edit_qty
+                            data.loc[idx, "入荷日"] = edit_received_date.strftime("%Y-%m-%d")
                             save_data(inventory_sheet, data)
                             append_history(
                                 history_sheet,
@@ -853,6 +897,7 @@ edited_data = st.data_editor(
         "HEX": st.column_config.TextColumn("HEX / Color Code"),
         "艶": st.column_config.SelectboxColumn("艶 / Finish", options=GLOSS_OPTIONS),
         "保有数": st.column_config.NumberColumn("保有数 / Stock", min_value=0.0, max_value=MAX_STOCK, step=STEP),
+        "入荷日": st.column_config.DateColumn("入荷日 / Received Date"),
     },
 )
 
