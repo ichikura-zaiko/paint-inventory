@@ -727,27 +727,45 @@ with left:
                 unsafe_allow_html=True,
             )
 
-            b1, b2, b3 = st.columns([1, 1, 2])
+            b1, b2, b3, b4, b5 = st.columns([1, 1, 1, 1, 2])
 
             with b1:
-                if st.button("＋0.5", key=f"plus_{idx}", use_container_width=True):
+                if st.button("＋0.5", key=f"plus05_{idx}", use_container_width=True):
                     before_qty = normalize_stock(data.loc[idx, "保有数"])
-                    after_qty = min(before_qty + STEP, MAX_STOCK)
+                    after_qty = min(before_qty + 0.5, MAX_STOCK)
                     data.loc[idx, "保有数"] = after_qty
                     save_data(inventory_sheet, data)
                     append_history(history_sheet, "入庫", data.loc[idx], before_qty, after_qty, after_qty - before_qty, "保有リスト +0.5")
                     st.rerun()
 
             with b2:
-                if st.button("−0.5", key=f"minus_{idx}", use_container_width=True):
+                if st.button("＋1", key=f"plus1_{idx}", use_container_width=True):
                     before_qty = normalize_stock(data.loc[idx, "保有数"])
-                    after_qty = max(before_qty - STEP, 0)
+                    after_qty = min(before_qty + 1.0, MAX_STOCK)
+                    data.loc[idx, "保有数"] = after_qty
+                    save_data(inventory_sheet, data)
+                    append_history(history_sheet, "入庫", data.loc[idx], before_qty, after_qty, after_qty - before_qty, "保有リスト +1")
+                    st.rerun()
+
+            with b3:
+                if st.button("−0.5", key=f"minus05_{idx}", use_container_width=True):
+                    before_qty = normalize_stock(data.loc[idx, "保有数"])
+                    after_qty = max(before_qty - 0.5, 0)
                     data.loc[idx, "保有数"] = after_qty
                     save_data(inventory_sheet, data)
                     append_history(history_sheet, "出庫", data.loc[idx], before_qty, after_qty, after_qty - before_qty, "保有リスト -0.5")
                     st.rerun()
 
-            with b3:
+            with b4:
+                if st.button("−1", key=f"minus1_{idx}", use_container_width=True):
+                    before_qty = normalize_stock(data.loc[idx, "保有数"])
+                    after_qty = max(before_qty - 1.0, 0)
+                    data.loc[idx, "保有数"] = after_qty
+                    save_data(inventory_sheet, data)
+                    append_history(history_sheet, "出庫", data.loc[idx], before_qty, after_qty, after_qty - before_qty, "保有リスト -1")
+                    st.rerun()
+
+            with b5:
                 edit_key = f"edit_{idx}"
                 pending_key = f"pending_delete_{idx}"
 
