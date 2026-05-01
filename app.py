@@ -15,19 +15,32 @@ from datetime import datetime, timedelta
 # 画面設定
 # =========================
 st.set_page_config(page_title="一倉 塗料管理システム", page_icon="🎨", layout="wide")
-st.markdown(
-    """
-    <div style="background:linear-gradient(90deg,#1e3a5f,#2e6da4);padding:10px 18px;border-radius:10px;margin-bottom:6px;display:flex;align-items:center;gap:12px;">
-        <span style="font-size:2rem;">🎨</span>
-        <div>
-            <div style="color:#ffffff;font-size:1.5rem;font-weight:700;letter-spacing:2px;">一倉　塗料管理システム</div>
-            <div style="color:#a8c8e8;font-size:0.8rem;">Ichikura Paint Inventory Management System</div>
+if is_mobile:
+    st.markdown(
+        """
+        <div style="background:linear-gradient(90deg,#1e3a5f,#2e6da4);padding:6px 12px;border-radius:8px;margin-bottom:4px;display:flex;align-items:center;gap:8px;">
+            <span style="font-size:1.3rem;">🎨</span>
+            <div>
+                <div style="color:#ffffff;font-size:1.1rem;font-weight:700;letter-spacing:1px;">一倉　塗料管理システム</div>
+            </div>
         </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-st.caption("Googleスプレッドシート直結・キャッシュなし / Connected to Google Sheets, no inventory cache")
+        """,
+        unsafe_allow_html=True,
+    )
+else:
+    st.markdown(
+        """
+        <div style="background:linear-gradient(90deg,#1e3a5f,#2e6da4);padding:10px 18px;border-radius:10px;margin-bottom:6px;display:flex;align-items:center;gap:12px;">
+            <span style="font-size:2rem;">🎨</span>
+            <div>
+                <div style="color:#ffffff;font-size:1.5rem;font-weight:700;letter-spacing:2px;">一倉　塗料管理システム</div>
+                <div style="color:#a8c8e8;font-size:0.8rem;">Ichikura Paint Inventory Management System</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.caption("Googleスプレッドシート直結・キャッシュなし / Connected to Google Sheets, no inventory cache")
 
 
 # =========================
@@ -580,53 +593,85 @@ else:
             st.rerun()
 
 gray_rows = data[data["HEX"].astype(str).str.upper().isin(DEFAULT_GRAY_VALUES)].copy()
-if len(gray_rows) > 0:
+if not is_mobile and len(gray_rows) > 0:
     with st.expander(f"⚠️ 色がグレーのデータ / Gray Color Data ({len(gray_rows)}件)"):
         st.dataframe(gray_rows[["No", "名称", "HEX", "保有数", "保管場所"]], use_container_width=True)
 
-st.divider()
-
-
-# =========================
-# 在庫入力
-# =========================
-st.subheader("在庫入力 / Add or Update Stock")
+if not is_mobile:
+    st.divider()
 
 if is_mobile:
-    # スマホ：完全縦積み・大きめUI
-    number = st.text_input("🔢 No / 色番号", placeholder="例: 05-40X")
-    number_clean = clean_code(number)
-    auto_name, auto_hex, found_color = color_lookup(number_clean, color_df)
-    if number_clean:
-        if found_color:
-            st.success(f"✅ {number_clean}　{auto_name}")
-        else:
-            st.warning(f"⚠️ {number_clean} は色マスタにありません")
-    name_input = st.text_input("📝 名称 / Name", value=auto_name)
-    name = name_input if name_input else auto_name
-    fa1, fa2 = st.columns(2)
-    with fa1:
-        customer = st.selectbox("得意先", customers)
-    with fa2:
-        paint_type = st.selectbox("種類", types)
-    fb1, fb2 = st.columns(2)
-    with fb1:
-        hex_color = st.color_picker("色", auto_hex)
-        st.markdown(f"<div style='margin-top:4px;'>{can_display_html(stock if 'stock' in dir() else 0, hex_color)}</div>", unsafe_allow_html=True)
-    with fb2:
-        gloss = st.selectbox("艶 / Finish", GLOSS_OPTIONS)
-    fc1, fc2 = st.columns(2)
-    with fc1:
-        stock = st.number_input("📦 保有数", min_value=0.0, max_value=MAX_STOCK, step=STEP, value=0.0)
-    with fc2:
-        order_status_input = st.selectbox("発注状況", ORDER_OPTIONS)
-    fd1, fd2 = st.columns(2)
-    with fd1:
-        received_date = st.date_input("入荷日", value=datetime.now().date())
-    with fd2:
-        location = st.text_input("📍 保管場所", placeholder="例: A-1")
+    # =========================
+    # スマホ：検索を先に・入力はexpander
+    # =========================
+    # 検索バー（最上部）
+    search = st.text_input("🔍 番号・名称・場所", placeholder="Search...", label_visibility="collapsed")
+    sf1, sf2 = st.columns(2)
+    with sf1:
+        order_filter = st.selectbox("発注状況", ["All／すべて"] + ORDER_OPTIONS, label_visibility="collapsed")
+    with sf2:
+        sort_mode = st.selectbox("並び替え", ["色番号順", "保有数順", "場所順", "入荷日順"], label_visibility="collapsed")
+    gloss_filter = "All／すべて"
+    location_filter = ""
+
+    # 在庫入力は折りたたみ
+    with st.expander("➕ 在庫を追加・更新する"):
+        number = st.text_input("No / 色番号", placeholder="例: 05-40X")
+        number_clean = clean_code(number)
+        auto_name, auto_hex, found_color = color_lookup(number_clean, color_df)
+        if number_clean:
+            if found_color:
+                st.success(f"✅ {number_clean}　{auto_name}")
+            else:
+                st.warning(f"⚠️ {number_clean} は色マスタにありません")
+        name_input = st.text_input("名称", value=auto_name)
+        name = name_input if name_input else auto_name
+        fa1, fa2 = st.columns(2)
+        with fa1:
+            customer = st.selectbox("得意先", customers)
+        with fa2:
+            paint_type = st.selectbox("種類", types)
+        fb1, fb2 = st.columns(2)
+        with fb1:
+            hex_color = st.color_picker("色", auto_hex)
+        with fb2:
+            gloss = st.selectbox("艶", GLOSS_OPTIONS)
+        fc1, fc2 = st.columns(2)
+        with fc1:
+            stock = st.number_input("保有数", min_value=0.0, max_value=MAX_STOCK, step=STEP, value=0.0)
+        with fc2:
+            order_status_input = st.selectbox("発注状況", ORDER_OPTIONS)
+        fd1, fd2 = st.columns(2)
+        with fd1:
+            received_date = st.date_input("入荷日", value=datetime.now().date())
+        with fd2:
+            location = st.text_input("保管場所", placeholder="例: A-1")
+        st.markdown(f"<div style='margin:4px 0;'>{can_display_html(stock, hex_color)}</div>", unsafe_allow_html=True)
+        if st.button("💾 保存する", type="primary", use_container_width=True):
+            if number_clean == "":
+                st.error("色番号を入力してください")
+            else:
+                before_qty = ""
+                existing_mask = data["No"].apply(clean_code) == number_clean
+                if existing_mask.any():
+                    before_qty = data.loc[existing_mask, "保有数"].iloc[0]
+                data = add_or_update_data(
+                    data, customer, paint_type, number_clean, name, hex_color, gloss,
+                    stock, received_date.strftime("%Y-%m-%d"), location, order_status_input,
+                )
+                save_data(inventory_sheet, data)
+                saved_row = data.loc[data["No"].apply(clean_code) == number_clean].iloc[0]
+                operation = "追加" if before_qty == "" else "更新"
+                diff = "" if before_qty == "" else normalize_stock(stock) - normalize_stock(before_qty)
+                append_history(history_sheet, operation, saved_row, before_qty, stock, diff, "SP入力")
+                st.success("保存しました！")
+                st.rerun()
+
 else:
-    # PC：横並びレイアウト
+    # =========================
+    # PC：在庫入力フォーム
+    # =========================
+    st.subheader("在庫入力 / Add or Update Stock")
     r1c1, r1c2, r1c3, r1c4 = st.columns([1.2, 1.2, 1, 1.5])
     with r1c1:
         customer = st.selectbox("得意先 / Customer", customers)
@@ -659,47 +704,29 @@ else:
         location = st.text_input("保管場所 / Location", placeholder="例: A-1")
         st.markdown(f"<div style='margin-top:2px;'>{can_display_html(stock, hex_color)}</div>", unsafe_allow_html=True)
 
-if st.button("追加 / 更新して保存 / Add or Update", type="primary", use_container_width=True):
-    if number_clean == "":
-        st.error("No / 色番号を入力してください / Please enter Color No.")
-    else:
-        before_qty = ""
-        existing_mask = data["No"].apply(clean_code) == number_clean
-        if existing_mask.any():
-            before_qty = data.loc[existing_mask, "保有数"].iloc[0]
+    if st.button("追加 / 更新して保存 / Add or Update", type="primary", use_container_width=True):
+        if number_clean == "":
+            st.error("No / 色番号を入力してください / Please enter Color No.")
+        else:
+            before_qty = ""
+            existing_mask = data["No"].apply(clean_code) == number_clean
+            if existing_mask.any():
+                before_qty = data.loc[existing_mask, "保有数"].iloc[0]
+            data = add_or_update_data(
+                data, customer, paint_type, number_clean, name, hex_color, gloss,
+                stock, received_date.strftime("%Y-%m-%d"), location, order_status_input,
+            )
+            save_data(inventory_sheet, data)
+            saved_row = data.loc[data["No"].apply(clean_code) == number_clean].iloc[0]
+            operation = "追加" if before_qty == "" else "更新"
+            diff = "" if before_qty == "" else normalize_stock(stock) - normalize_stock(before_qty)
+            append_history(history_sheet, operation, saved_row, before_qty, stock, diff, "入力フォーム")
+            st.success("保存しました / Saved")
+            st.rerun()
 
-        data = add_or_update_data(
-            data, customer, paint_type, number_clean, name, hex_color, gloss,
-            stock, received_date.strftime("%Y-%m-%d"), location, order_status_input,
-        )
-        save_data(inventory_sheet, data)
+    st.divider()
 
-        saved_row = data.loc[data["No"].apply(clean_code) == number_clean].iloc[0]
-        operation = "追加" if before_qty == "" else "更新"
-        diff = "" if before_qty == "" else normalize_stock(stock) - normalize_stock(before_qty)
-        append_history(history_sheet, operation, saved_row, before_qty, stock, diff, "入力フォーム")
-
-        st.success("保存しました / Saved")
-        st.rerun()
-
-st.divider()
-
-
-# =========================
-# 検索・並び替え
-# =========================
-st.subheader("検索 / Search")
-
-if is_mobile:
-    search = st.text_input("🔍 番号・名称・場所", placeholder="Search...")
-    sf1, sf2 = st.columns(2)
-    with sf1:
-        order_filter = st.selectbox("発注状況", ["All／すべて"] + ORDER_OPTIONS)
-    with sf2:
-        sort_mode = st.selectbox("並び替え", ["色番号順", "保有数順", "場所順", "入荷日順"])
-    gloss_filter = "All／すべて"
-    location_filter = ""
-else:
+    # PC検索
     sc1, sc2, sc3, sc4, sc5 = st.columns([2, 1, 1, 1, 1])
     with sc1:
         search = st.text_input("🔍 番号・名称・得意先・種類・場所", placeholder="Search...")
@@ -977,24 +1004,25 @@ elif is_mobile:
             <div class="sp-card">
               <div class="sp-card-header">
                 <div class="sp-chip" style="background:{display_hex};"></div>
-                <div>
+                <div style="flex:1;">
                   <div class="sp-title">{row['No']}　{row['名称']}</div>
-                  <div class="sp-sub">{row['得意先']} / {row['種類']} / {gloss_text}</div>
+                  <div class="sp-sub">{row['種類']} / {gloss_text} / 📍{location_text}</div>
+                  <div style="display:flex;align-items:center;gap:10px;margin-top:4px;">
+                    <span style="font-size:20px;font-weight:700;color:#1e3a5f;">{qty:g} {unit_label(qty)}</span>
+                    {can_display_html(qty, display_hex)}
+                  </div>
+                  <div style="margin-top:4px;">
+                    <span style="font-size:11px;color:{expiry_color};">📅 {expiry_text}</span>
+                    {"&nbsp;&nbsp;" + order_badge_html if order_badge_html else ""}
+                  </div>
                 </div>
-              </div>
-              <div class="sp-qty">{qty:g} {unit_label(qty)}</div>
-              {can_display_html(qty, display_hex)}
-              <div style="margin-top:6px;">
-                <span class="sp-badge" style="color:{expiry_color};">📅 {expiry_text}</span>
-                <span class="sp-badge">📍 {location_text}</span>
-                {order_badge_html}
               </div>
             </div>
             """,
             unsafe_allow_html=True,
         )
         render_card_buttons(idx, row, qty)
-        st.markdown("<hr style='margin:8px 0;'>", unsafe_allow_html=True)
+        st.markdown("<div style='margin:2px 0;'></div>", unsafe_allow_html=True)
 else:
     # ===== PC：2カラムレイアウト =====
     left, right = st.columns([2, 1])
