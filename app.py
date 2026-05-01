@@ -102,17 +102,25 @@ st.markdown(
     h2, h3 { margin-top: 0.3rem !important; margin-bottom: 0.2rem !important; font-size: 1.05rem !important; }
     h1 { font-size: 1.3rem !important; margin-bottom: 0 !important; }
     .stCaption { margin-bottom: 0.1rem !important; }
-    [data-testid="metric-container"] { padding: 2px 4px !important; }
-    [data-testid="stMetricValue"] { font-size: 1.1rem !important; line-height:1.2 !important; }
-    [data-testid="stMetricLabel"] { font-size: 0.65rem !important; }
-    /* スマホ時のカラム間隔を詰める */
-    div[data-testid="column"] { padding-left: 4px !important; padding-right: 4px !important; }
+    [data-testid="metric-container"] { padding: 1px 2px !important; }
+    [data-testid="stMetricValue"] { font-size: 1.05rem !important; line-height:1.1 !important; }
+    [data-testid="stMetricLabel"] { font-size: 0.6rem !important; margin-bottom:0 !important; }
+    div[data-testid="column"] { padding-left: 3px !important; padding-right: 3px !important; }
+    /* メトリクスの余分な余白削除 */
+    div[data-testid="stMetric"] { padding: 0 !important; }
     .stTextInput input, .stNumberInput input,
     .stSelectbox div[data-baseweb="select"] {
         padding-top: 4px !important; padding-bottom: 4px !important; min-height: 36px !important;
     }
     .stButton > button {
         padding: 4px 10px !important; min-height: 34px !important; font-size: 0.85rem !important;
+    }
+    /* スマホ用小ボタン（data属性でクラス指定できないためcontainer側で制御） */
+    .sp-btn-sm > div > button {
+        padding: 2px 4px !important;
+        min-height: 26px !important;
+        font-size: 0.78rem !important;
+        line-height: 1.2 !important;
     }
     hr { margin-top: 0.3rem !important; margin-bottom: 0.3rem !important; }
     .stSelectbox label, .stTextInput label, .stNumberInput label,
@@ -563,20 +571,33 @@ except Exception as e:
 order_count = len(data[data["発注状況"].astype(str).str.strip().isin(["発注予定", "発注済み", "納品待ち"])])
 
 if is_mobile:
-    # スマホ：1行にメトリクス3つ＋ボタン2つ
-    ma1, ma2, ma3, ma4, ma5 = st.columns([1.2, 1.2, 1.2, 1.5, 1.5])
-    with ma1:
-        st.metric("件数", len(data))
-    with ma2:
-        st.metric("総数", f"{data['保有数'].sum():g}")
-    with ma3:
-        st.metric("発注", order_count)
-    with ma4:
-        if st.button("🔄", use_container_width=True, help="再読み込み"):
+    # スマホ：HTMLで横並びメトリクス表示
+    total_stock = data["保有数"].sum()
+    st.markdown(
+        f"""<div style="display:flex;gap:0;margin-bottom:4px;background:#f8fafc;
+                border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
+            <div style="flex:1;text-align:center;padding:5px 2px;border-right:1px solid #e2e8f0;">
+                <div style="font-size:0.6rem;color:#64748b;">件数</div>
+                <div style="font-size:1.1rem;font-weight:700;line-height:1.2;">{len(data)}</div>
+            </div>
+            <div style="flex:1;text-align:center;padding:5px 2px;border-right:1px solid #e2e8f0;">
+                <div style="font-size:0.6rem;color:#64748b;">総保有数</div>
+                <div style="font-size:1.1rem;font-weight:700;line-height:1.2;">{total_stock:g}</div>
+            </div>
+            <div style="flex:1;text-align:center;padding:5px 2px;">
+                <div style="font-size:0.6rem;color:#64748b;">発注中</div>
+                <div style="font-size:1.1rem;font-weight:700;line-height:1.2;color:{"#f59e0b" if order_count > 0 else "#1e293b"};">{order_count}</div>
+            </div>
+        </div>""",
+        unsafe_allow_html=True,
+    )
+    mb1, mb2 = st.columns(2)
+    with mb1:
+        if st.button("🔄 再読み込み", use_container_width=True):
             load_color_master.clear()
             st.rerun()
-    with ma5:
-        if st.button("💻 PC", use_container_width=True):
+    with mb2:
+        if st.button("💻 PCモードへ", use_container_width=True):
             st.session_state["mobile_mode"] = False
             st.rerun()
 else:
@@ -790,53 +811,59 @@ def render_card_buttons(idx, row, qty):
     qr_key = f"qr_{idx}"
 
     if is_mobile:
-        # スマホ：＋−を4列1行、編集QR削除を3列1行
-        rb1, rb2, rb3, rb4 = st.columns(4)
-        with rb1:
-            if st.button("＋0.5", key=f"plus05_{idx}", use_container_width=True):
-                before = normalize_stock(data.loc[idx,"保有数"])
-                after = min(before+0.5, MAX_STOCK)
-                data.loc[idx,"保有数"] = after
-                save_data(inventory_sheet, data)
-                append_history(history_sheet,"入庫",data.loc[idx],before,after,after-before,"SP +0.5")
-                st.rerun()
-        with rb2:
-            if st.button("＋1", key=f"plus1_{idx}", use_container_width=True):
-                before = normalize_stock(data.loc[idx,"保有数"])
-                after = min(before+1.0, MAX_STOCK)
-                data.loc[idx,"保有数"] = after
-                save_data(inventory_sheet, data)
-                append_history(history_sheet,"入庫",data.loc[idx],before,after,after-before,"SP +1")
-                st.rerun()
-        with rb3:
-            if st.button("−0.5", key=f"minus05_{idx}", use_container_width=True):
-                before = normalize_stock(data.loc[idx,"保有数"])
-                after = max(before-0.5, 0)
-                data.loc[idx,"保有数"] = after
-                save_data(inventory_sheet, data)
-                append_history(history_sheet,"出庫",data.loc[idx],before,after,after-before,"SP -0.5")
-                st.rerun()
-        with rb4:
-            if st.button("−1", key=f"minus1_{idx}", use_container_width=True):
-                before = normalize_stock(data.loc[idx,"保有数"])
-                after = max(before-1.0, 0)
-                data.loc[idx,"保有数"] = after
-                save_data(inventory_sheet, data)
-                append_history(history_sheet,"出庫",data.loc[idx],before,after,after-before,"SP -1")
-                st.rerun()
-        rc1, rc2, rc3 = st.columns(3)
-        with rc1:
-            if st.button("✏️ 編集", key=f"edit_button_{idx}", use_container_width=True):
-                st.session_state[edit_key] = not st.session_state.get(edit_key, False)
-                st.rerun()
-        with rc2:
-            if st.button("📷 QR", key=f"qr_button_{idx}", use_container_width=True):
-                st.session_state[qr_key] = not st.session_state.get(qr_key, False)
-                st.rerun()
-        with rc3:
-            if st.button("🗑️ 削除", key=f"delete_{idx}", use_container_width=True):
-                st.session_state[pending_key] = True
-                st.rerun()
+        # スマホ：小さいボタンをインラインCSSで上書き
+        st.markdown("""<style>
+        .sp-btns .stButton>button{
+            padding:3px 2px !important;min-height:28px !important;
+            font-size:0.8rem !important;line-height:1.1 !important;
+        }</style>""", unsafe_allow_html=True)
+        with st.container():
+            rb1, rb2, rb3, rb4 = st.columns(4)
+            with rb1:
+                if st.button("＋0.5", key=f"plus05_{idx}", use_container_width=True):
+                    before = normalize_stock(data.loc[idx,"保有数"])
+                    after = min(before+0.5, MAX_STOCK)
+                    data.loc[idx,"保有数"] = after
+                    save_data(inventory_sheet, data)
+                    append_history(history_sheet,"入庫",data.loc[idx],before,after,after-before,"SP +0.5")
+                    st.rerun()
+            with rb2:
+                if st.button("＋1", key=f"plus1_{idx}", use_container_width=True):
+                    before = normalize_stock(data.loc[idx,"保有数"])
+                    after = min(before+1.0, MAX_STOCK)
+                    data.loc[idx,"保有数"] = after
+                    save_data(inventory_sheet, data)
+                    append_history(history_sheet,"入庫",data.loc[idx],before,after,after-before,"SP +1")
+                    st.rerun()
+            with rb3:
+                if st.button("−0.5", key=f"minus05_{idx}", use_container_width=True):
+                    before = normalize_stock(data.loc[idx,"保有数"])
+                    after = max(before-0.5, 0)
+                    data.loc[idx,"保有数"] = after
+                    save_data(inventory_sheet, data)
+                    append_history(history_sheet,"出庫",data.loc[idx],before,after,after-before,"SP -0.5")
+                    st.rerun()
+            with rb4:
+                if st.button("−1", key=f"minus1_{idx}", use_container_width=True):
+                    before = normalize_stock(data.loc[idx,"保有数"])
+                    after = max(before-1.0, 0)
+                    data.loc[idx,"保有数"] = after
+                    save_data(inventory_sheet, data)
+                    append_history(history_sheet,"出庫",data.loc[idx],before,after,after-before,"SP -1")
+                    st.rerun()
+            rc1, rc2, rc3 = st.columns(3)
+            with rc1:
+                if st.button("✏️ 編集", key=f"edit_button_{idx}", use_container_width=True):
+                    st.session_state[edit_key] = not st.session_state.get(edit_key, False)
+                    st.rerun()
+            with rc2:
+                if st.button("📷 QR", key=f"qr_button_{idx}", use_container_width=True):
+                    st.session_state[qr_key] = not st.session_state.get(qr_key, False)
+                    st.rerun()
+            with rc3:
+                if st.button("🗑️ 削除", key=f"delete_{idx}", use_container_width=True):
+                    st.session_state[pending_key] = True
+                    st.rerun()
     else:
         # PC：既存の5列レイアウト
         b1, b2, b3, b4, b5 = st.columns([1, 1, 1, 1, 2])
