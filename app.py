@@ -185,50 +185,61 @@ def connect_spreadsheet():
 
 
 def get_or_create_worksheet(spreadsheet, title, columns):
+    """シート取得。存在しなければ作成。
+    Google APIの読み取り回数を減らすため、既存シートには毎回 get_all_values() しない。
+    """
     try:
-        ws = spreadsheet.worksheet(title)
+        return spreadsheet.worksheet(title)
     except gspread.WorksheetNotFound:
         ws = spreadsheet.add_worksheet(title=title, rows=1000, cols=max(len(columns), 3))
         ws.update([columns], "A1")
         return ws
 
-    values = ws.get_all_values()
-    if not values:
-        ws.update([columns], "A1")
-    return ws
 
-
-def seed_master_if_empty(ws, defaults):
-    records = ws.get_all_records()
-    if records:
+def ensure_master_has_default_values(ws, defaults):
+    """マスタが空のときだけ初期値を入れる。
+    読み取り回数節約のためA列だけ確認する。
+    """
+    values = ws.col_values(1)
+    if len(values) >= 2:
         return
     ws.clear()
     ws.update([["名称"]] + [[x] for x in defaults], "A1")
 
 
+@st.cache_resource(ttl=3600)
 def get_sheets():
+    """ワークシートオブジェクトはキャッシュする。
+    実データ load_data はキャッシュしないので、在庫変更は反映される。
+    """
     spreadsheet = connect_spreadsheet()
     inventory_ws = get_or_create_worksheet(spreadsheet, INVENTORY_SHEET, COLUMNS)
     customer_ws = get_or_create_worksheet(spreadsheet, CUSTOMER_MASTER_SHEET, MASTER_COLUMNS)
     type_ws = get_or_create_worksheet(spreadsheet, TYPE_MASTER_SHEET, MASTER_COLUMNS)
-
-    seed_master_if_empty(customer_ws, DEFAULT_CUSTOMERS)
-    seed_master_if_empty(type_ws, DEFAULT_TYPES)
-
     return inventory_ws, customer_ws, type_ws
 
 
 # =========================
 # マスタ読み込み
 # =========================
-def load_master(ws, defaults):
-    records = ws.get_all_records()
-    values = []
-    for record in records:
-        name = str(record.get("名称", "")).strip()
-        if name and name not in values:
-            values.append(name)
-    return values or defaults
+@st.cache_data(ttl=300)
+def load_master_by_sheet_name(sheet_name, defaults):
+    """得意先・種類マスタは5分キャッシュ。
+    在庫データ本体ではないため、API制限対策としてキャッシュする。
+    マスタを変更したら『マスタ再読み込み』ボタンでクリアできる。
+    """
+    spreadsheet = connect_spreadsheet()
+    ws = spreadsheet.worksheet(sheet_name)
+
+    ensure_master_has_default_values(ws, defaults)
+
+    values = ws.col_values(1)
+    items = []
+    for value in values[1:]:
+        name = str(value).strip()
+        if name and name not in items:
+            items.append(name)
+    return items or defaults
 
 
 @st.cache_data
@@ -375,8 +386,8 @@ def add_or_update_data(data, customer, paint_type, number_clean, name, hex_color
 try:
     inventory_sheet, customer_master_sheet, type_master_sheet = get_sheets()
     color_df = load_color_master()
-    customers = load_master(customer_master_sheet, DEFAULT_CUSTOMERS)
-    types = load_master(type_master_sheet, DEFAULT_TYPES)
+    customers = load_master_by_sheet_name(CUSTOMER_MASTER_SHEET, DEFAULT_CUSTOMERS)
+    types = load_master_by_sheet_name(TYPE_MASTER_SHEET, DEFAULT_TYPES)
     data = load_data(inventory_sheet, color_df)
 except Exception as e:
     st.error("データ読み込みでエラーが発生しました。")
@@ -393,8 +404,12 @@ with top1:
 with top2:
     st.metric("総保有数", f"{data['保有数'].sum():g}")
 with top3:
-    if st.button("🔄 スプレッドシートを再読み込み", use_container_width=True):
+    if st.button("🔄 在庫を再読み込み", use_container_width=True):
         st.rerun()
+
+if st.button("⚙️ マスタ再読み込み", use_container_width=True):
+    load_master_by_sheet_name.clear()
+    st.rerun()
 
 st.divider()
 
