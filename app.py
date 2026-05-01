@@ -6,20 +6,117 @@ import unicodedata
 import os
 import re
 
-st.set_page_config(page_title="塗料在庫管理", layout="wide")
-st.title("塗料在庫管理")
 
+# =========================
+# 画面設定
+# =========================
+st.set_page_config(page_title="塗料在庫管理", page_icon="🎨", layout="wide")
+st.title("🎨 塗料在庫管理")
+st.caption("Googleスプレッドシート直結・キャッシュなし")
+
+
+# =========================
+# 基本設定
+# =========================
 SPREADSHEET_ID = "1BnRviQ1S5rEDFVX3NCkLfGQpm9Jrq1xtFkfDLHba3z0"
 COLOR_FILE = "nittoko_colors.csv"
 
+INVENTORY_SHEET = "在庫"
+CUSTOMER_MASTER_SHEET = "得意先マスタ"
+TYPE_MASTER_SHEET = "種類マスタ"
+
 COLUMNS = ["得意先", "種類", "No", "名称", "HEX", "保有数"]
+MASTER_COLUMNS = ["名称"]
 
-CUSTOMERS = ["自社", "東洋紡エンジニアリング", "その他"]
-TYPES = ["アクリル", "メラミン", "粉体", "ウレタン", "エポキシ", "ラッカー", "その他"]
+DEFAULT_CUSTOMERS = ["自社", "東洋紡エンジニアリング", "その他"]
+DEFAULT_TYPES = ["アクリル", "メラミン", "粉体", "ウレタン", "エポキシ", "ラッカー", "その他"]
 
+MAX_STOCK = 50.0
+STEP = 0.5
 HEX_PATTERN = re.compile(r"^#[0-9A-Fa-f]{6}$")
 
 
+# =========================
+# スマホ向けCSS
+# =========================
+st.markdown(
+    """
+    <style>
+    .block-container {
+        padding-top: 1rem;
+        padding-left: 0.8rem;
+        padding-right: 0.8rem;
+    }
+    .paint-card {
+        background-color:#dbeafe;
+        padding:14px;
+        border-radius:12px;
+        margin-bottom:12px;
+        border:1px solid #ccc;
+    }
+    .paint-card-inner {
+        display:flex;
+        align-items:center;
+        gap:14px;
+        flex-wrap:wrap;
+    }
+    .paint-chip {
+        width:58px;
+        height:58px;
+        border:1px solid #555;
+        border-radius:8px;
+        flex: 0 0 auto;
+    }
+    .paint-info {
+        flex:1;
+        min-width:220px;
+    }
+    .paint-no-name {
+        font-size:22px;
+        font-weight:600;
+    }
+    .paint-stock {
+        font-size:28px;
+        letter-spacing:1px;
+        white-space:nowrap;
+    }
+    .small-color-row {
+        display:flex;
+        align-items:center;
+        gap:8px;
+        margin-bottom:8px;
+    }
+    .small-color-chip {
+        width:28px;
+        height:28px;
+        border:1px solid #555;
+        flex: 0 0 auto;
+    }
+    @media (max-width: 768px) {
+        .stButton > button {
+            width: 100%;
+            min-height: 42px;
+        }
+        div[data-testid="column"] {
+            width: 100% !important;
+            flex: 1 1 100% !important;
+        }
+        .paint-no-name {
+            font-size:20px;
+        }
+        .paint-stock {
+            font-size:24px;
+        }
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+# =========================
+# 共通関数
+# =========================
 def clean_code(value):
     if value is None:
         return ""
@@ -32,8 +129,26 @@ def is_valid_hex(value):
     return bool(HEX_PATTERN.match(str(value).strip()))
 
 
+def normalize_hex(value):
+    value = str(value).strip()
+    if not value:
+        return "#999999"
+    if not value.startswith("#"):
+        value = f"#{value}"
+    value = value.upper()
+    return value if is_valid_hex(value) else "#999999"
+
+
+def normalize_stock(value):
+    value = pd.to_numeric(value, errors="coerce")
+    if pd.isna(value):
+        value = 0.0
+    value = max(0.0, min(float(value), MAX_STOCK))
+    return round(value * 2) / 2
+
+
 def can_display(qty):
-    qty = float(qty)
+    qty = normalize_stock(qty)
     full = int(qty)
     half = (qty - full) >= 0.5
 
@@ -52,22 +167,74 @@ def can_display(qty):
     return display
 
 
+# =========================
+# Google Sheets接続
+# connect_spreadsheetだけは接続再利用のため cache_resource OK
+# load_dataにはキャッシュを使わない
+# =========================
 @st.cache_resource(ttl=3600)
-def connect_sheet():
-    scope = ["https://www.googleapis.com/auth/spreadsheets"]
+def connect_spreadsheet():
+    scope = [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive",
+    ]
     creds_dict = dict(st.secrets["gcp_service_account"])
     creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
     client = gspread.authorize(creds)
-    return client.open_by_key(SPREADSHEET_ID).sheet1
+    return client.open_by_key(SPREADSHEET_ID)
 
 
-sheet = connect_sheet()
+def get_or_create_worksheet(spreadsheet, title, columns):
+    try:
+        ws = spreadsheet.worksheet(title)
+    except gspread.WorksheetNotFound:
+        ws = spreadsheet.add_worksheet(title=title, rows=1000, cols=max(len(columns), 3))
+        ws.update([columns], "A1")
+        return ws
+
+    values = ws.get_all_values()
+    if not values:
+        ws.update([columns], "A1")
+    return ws
+
+
+def seed_master_if_empty(ws, defaults):
+    records = ws.get_all_records()
+    if records:
+        return
+    ws.clear()
+    ws.update([["名称"]] + [[x] for x in defaults], "A1")
+
+
+def get_sheets():
+    spreadsheet = connect_spreadsheet()
+    inventory_ws = get_or_create_worksheet(spreadsheet, INVENTORY_SHEET, COLUMNS)
+    customer_ws = get_or_create_worksheet(spreadsheet, CUSTOMER_MASTER_SHEET, MASTER_COLUMNS)
+    type_ws = get_or_create_worksheet(spreadsheet, TYPE_MASTER_SHEET, MASTER_COLUMNS)
+
+    seed_master_if_empty(customer_ws, DEFAULT_CUSTOMERS)
+    seed_master_if_empty(type_ws, DEFAULT_TYPES)
+
+    return inventory_ws, customer_ws, type_ws
+
+
+# =========================
+# マスタ読み込み
+# =========================
+def load_master(ws, defaults):
+    records = ws.get_all_records()
+    values = []
+    for record in records:
+        name = str(record.get("名称", "")).strip()
+        if name and name not in values:
+            values.append(name)
+    return values or defaults
 
 
 @st.cache_data
 def load_color_master():
     if os.path.exists(COLOR_FILE):
-        df = pd.read_csv(COLOR_FILE)
+        df = pd.read_csv(COLOR_FILE, dtype=str).fillna("")
         df.columns = df.columns.str.strip()
     else:
         df = pd.DataFrame(columns=["日塗工番号", "色名", "HEX"])
@@ -77,37 +244,38 @@ def load_color_master():
             df[col] = ""
 
     df["検索番号"] = df["日塗工番号"].apply(clean_code)
+    df["HEX"] = df["HEX"].apply(normalize_hex)
     return df
 
 
-color_df = load_color_master()
-
-
-def color_lookup(number):
+def color_lookup(number, color_df):
     number_clean = clean_code(number)
     match = color_df[color_df["検索番号"] == number_clean]
 
     if not match.empty:
-        hex_value = str(match.iloc[0]["HEX"]).strip()
+        hex_value = normalize_hex(match.iloc[0]["HEX"])
         name_value = str(match.iloc[0]["色名"]).strip()
-
-        if not is_valid_hex(hex_value):
-            hex_value = "#999999"
-
         return name_value, hex_value
 
     return number_clean, "#999999"
 
 
-def load_data():
+# =========================
+# 在庫読み込み・保存
+# load_dataはキャッシュなし
+# =========================
+def load_data(sheet, color_df):
     values = sheet.get_all_values()
 
     if not values:
-        sheet.update([COLUMNS])
+        sheet.update([COLUMNS], "A1")
         return pd.DataFrame(columns=COLUMNS)
 
     headers = values[0]
     rows = values[1:]
+
+    if not rows:
+        return pd.DataFrame(columns=COLUMNS)
 
     df = pd.DataFrame(rows, columns=headers)
 
@@ -119,45 +287,110 @@ def load_data():
             df[col] = ""
 
     df = df[COLUMNS]
-    df["保有数"] = pd.to_numeric(df["保有数"], errors="coerce").fillna(0)
-
-    # 保存済みデータのHEXが空・不正なら、日塗工CSVから補正
-    for idx, row in df.iterrows():
-        if not is_valid_hex(row["HEX"]):
-            auto_name, auto_hex = color_lookup(row["No"])
-            df.at[idx, "HEX"] = auto_hex
-
-            if str(row["名称"]).strip() == "":
-                df.at[idx, "名称"] = auto_name
+    df["得意先"] = df["得意先"].astype(str)
+    df["種類"] = df["種類"].astype(str)
+    df["No"] = df["No"].astype(str).apply(clean_code)
+    df["名称"] = df["名称"].astype(str)
+    df["HEX"] = df["HEX"].apply(normalize_hex)
+    df["保有数"] = df["保有数"].apply(normalize_stock)
 
     return df
 
 
-def save_data(df):
-    df = df[COLUMNS].copy()
-    df["保有数"] = pd.to_numeric(df["保有数"], errors="coerce").fillna(0)
+def save_data(sheet, df):
+    df = df.copy()
+
+    for col in COLUMNS:
+        if col not in df.columns:
+            df[col] = ""
+
+    df = df[COLUMNS]
+    df["No"] = df["No"].apply(clean_code)
+    df["HEX"] = df["HEX"].apply(normalize_hex)
+    df["保有数"] = df["保有数"].apply(normalize_stock)
 
     sheet.clear()
-    sheet.update([COLUMNS] + df.astype(str).values.tolist())
-    load_data.clear()
+    sheet.update([COLUMNS] + df.astype(str).values.tolist(), "A1")
 
 
-data = load_data()
+def add_or_update_data(data, customer, paint_type, number_clean, name, hex_color, stock):
+    data = data.copy()
+    data["検索No"] = data["No"].apply(clean_code)
 
+    # 現状仕様：Noが同じなら更新
+    # 得意先・種類ごとに同じNoを別管理したい場合は、ここを複合キーに変更する
+    if number_clean in data["検索No"].values:
+        data.loc[data["検索No"] == number_clean, COLUMNS] = [
+            customer,
+            paint_type,
+            number_clean,
+            name,
+            hex_color,
+            stock,
+        ]
+    else:
+        new_row = pd.DataFrame([
+            {
+                "得意先": customer,
+                "種類": paint_type,
+                "No": number_clean,
+                "名称": name,
+                "HEX": hex_color,
+                "保有数": stock,
+            }
+        ])
+        data = pd.concat([data.drop(columns=["検索No"], errors="ignore"), new_row], ignore_index=True)
+
+    return data.drop(columns=["検索No"], errors="ignore")
+
+
+# =========================
+# 初期読み込み
+# =========================
+try:
+    inventory_sheet, customer_master_sheet, type_master_sheet = get_sheets()
+    color_df = load_color_master()
+    customers = load_master(customer_master_sheet, DEFAULT_CUSTOMERS)
+    types = load_master(type_master_sheet, DEFAULT_TYPES)
+    data = load_data(inventory_sheet, color_df)
+except Exception as e:
+    st.error("データ読み込みでエラーが発生しました。")
+    st.exception(e)
+    st.stop()
+
+
+# =========================
+# 上部操作
+# =========================
+top1, top2, top3 = st.columns([1, 1, 1])
+with top1:
+    st.metric("登録件数", len(data))
+with top2:
+    st.metric("総保有数", f"{data['保有数'].sum():g}")
+with top3:
+    if st.button("🔄 スプレッドシートを再読み込み", use_container_width=True):
+        st.rerun()
+
+st.divider()
+
+
+# =========================
+# 在庫入力
+# =========================
 st.subheader("在庫入力")
 
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    customer = st.selectbox("得意先", CUSTOMERS)
-    paint_type = st.selectbox("種類", TYPES)
+    customer = st.selectbox("得意先", customers)
+    paint_type = st.selectbox("種類", types)
 
 with col2:
     number = st.text_input("No / 色番号")
     number_clean = clean_code(number)
     name_input = st.text_input("名称")
 
-auto_name, auto_hex = color_lookup(number_clean)
+auto_name, auto_hex = color_lookup(number_clean, color_df)
 
 if number_clean:
     if auto_hex != "#999999":
@@ -169,41 +402,24 @@ name = name_input if name_input else auto_name
 
 with col3:
     hex_color = st.color_picker("色", auto_hex)
-    stock = st.number_input("保有数", min_value=0.0, max_value=50.0, step=0.5)
+    stock = st.number_input("保有数", min_value=0.0, max_value=MAX_STOCK, step=STEP)
+    st.markdown(f"<div class='paint-stock'>{can_display(stock)}</div>", unsafe_allow_html=True)
 
-if st.button("追加 / 更新して保存", use_container_width=True):
+if st.button("追加 / 更新して保存", type="primary", use_container_width=True):
     if number_clean == "":
         st.error("No / 色番号を入力してください")
     else:
-        data["検索No"] = data["No"].apply(clean_code)
-
-        if number_clean in data["検索No"].values:
-            data.loc[data["検索No"] == number_clean, COLUMNS] = [
-                customer, paint_type, number_clean, name, hex_color, stock
-            ]
-            st.success("更新しました")
-        else:
-            new_row = pd.DataFrame([{
-                "得意先": customer,
-                "種類": paint_type,
-                "No": number_clean,
-                "名称": name,
-                "HEX": hex_color,
-                "保有数": stock,
-            }])
-
-            data = pd.concat(
-                [data.drop(columns=["検索No"], errors="ignore"), new_row],
-                ignore_index=True
-            )
-            st.success("追加しました")
-
-        data = data.drop(columns=["検索No"], errors="ignore")
-        save_data(data)
+        data = add_or_update_data(data, customer, paint_type, number_clean, name, hex_color, stock)
+        save_data(inventory_sheet, data)
+        st.success("保存しました")
         st.rerun()
 
 st.divider()
 
+
+# =========================
+# 検索・並び替え
+# =========================
 st.subheader("検索・並び替え")
 
 c1, c2 = st.columns([2, 1])
@@ -236,6 +452,10 @@ elif sort_mode == "種類順":
 
 left, right = st.columns([2, 1])
 
+
+# =========================
+# 保有リスト
+# =========================
 with left:
     st.subheader("保有リスト")
 
@@ -243,49 +463,37 @@ with left:
         st.info("該当する在庫データがありません")
     else:
         for idx, row in owned.iterrows():
-            display_hex = row["HEX"] if is_valid_hex(row["HEX"]) else "#999999"
+            display_hex = normalize_hex(row["HEX"])
 
             st.markdown(
                 f"""
-                <div style="
-                    background-color:#dbeafe;
-                    padding:14px;
-                    border-radius:12px;
-                    margin-bottom:12px;
-                    border:1px solid #ccc;
-                ">
-                    <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
-                        <div style="
-                            width:58px;
-                            height:58px;
-                            background-color:{display_hex};
-                            border:1px solid #555;
-                            border-radius:8px;
-                        "></div>
-                        <div style="flex:1; min-width:220px;">
+                <div class="paint-card">
+                    <div class="paint-card-inner">
+                        <div class="paint-chip" style="background-color:{display_hex};"></div>
+                        <div class="paint-info">
                             <b>{row['得意先']} / {row['種類']}</b><br>
-                            <span style="font-size:22px;">{row['No']}　{row['名称']}</span><br>
-                            <span style="font-size:28px;">{can_display(row['保有数'])}</span>
-                            <span style="font-size:18px;">　{row['保有数']}個</span>
+                            <span class="paint-no-name">{row['No']}　{row['名称']}</span><br>
+                            <span class="paint-stock">{can_display(row['保有数'])}</span>
+                            <span style="font-size:18px;">　{row['保有数']:g}個</span>
                         </div>
                     </div>
                 </div>
                 """,
-                unsafe_allow_html=True
+                unsafe_allow_html=True,
             )
 
             b1, b2, b3 = st.columns([1, 1, 2])
 
             with b1:
                 if st.button("＋0.5", key=f"plus_{idx}", use_container_width=True):
-                    data.loc[idx, "保有数"] = min(float(data.loc[idx, "保有数"]) + 0.5, 50)
-                    save_data(data)
+                    data.loc[idx, "保有数"] = min(float(data.loc[idx, "保有数"]) + STEP, MAX_STOCK)
+                    save_data(inventory_sheet, data)
                     st.rerun()
 
             with b2:
                 if st.button("−0.5", key=f"minus_{idx}", use_container_width=True):
-                    data.loc[idx, "保有数"] = max(float(data.loc[idx, "保有数"]) - 0.5, 0)
-                    save_data(data)
+                    data.loc[idx, "保有数"] = max(float(data.loc[idx, "保有数"]) - STEP, 0)
+                    save_data(inventory_sheet, data)
                     st.rerun()
 
             with b3:
@@ -297,7 +505,7 @@ with left:
                     with ca:
                         if st.button("本当に削除", key=f"confirm_yes_{idx}", use_container_width=True):
                             data = data.drop(index=idx)
-                            save_data(data)
+                            save_data(inventory_sheet, data)
                             st.session_state.pop(pending_key, None)
                             st.success("削除しました")
                             st.rerun()
@@ -311,6 +519,10 @@ with left:
                         st.session_state[pending_key] = True
                         st.rerun()
 
+
+# =========================
+# 保有カラー一覧
+# =========================
 with right:
     st.subheader("保有カラー一覧")
 
@@ -318,44 +530,58 @@ with right:
         st.info("保有カラーなし")
     else:
         for _, row in owned.iterrows():
-            display_hex = row["HEX"] if is_valid_hex(row["HEX"]) else "#999999"
+            display_hex = normalize_hex(row["HEX"])
 
             st.markdown(
                 f"""
-                <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-                    <div style="
-                        width:28px;
-                        height:28px;
-                        background-color:{display_hex};
-                        border:1px solid #555;
-                    "></div>
-                    <div>{row['No']}　{row['名称']}　{row['保有数']}個</div>
+                <div class="small-color-row">
+                    <div class="small-color-chip" style="background-color:{display_hex};"></div>
+                    <div>{row['No']}　{row['名称']}　{row['保有数']:g}個</div>
                 </div>
                 """,
-                unsafe_allow_html=True
+                unsafe_allow_html=True,
             )
 
         st.divider()
         st.metric("保有色数", len(owned))
-        st.metric("保有数量", owned["保有数"].sum())
+        st.metric("保有数量", f"{owned['保有数'].sum():g}")
 
 st.divider()
 
+
+# =========================
+# 直接テーブル編集
+# =========================
 st.subheader("直接テーブル編集")
+st.caption("ここで編集して保存すると、Googleスプレッドシートに反映されます。")
 
 edited_data = st.data_editor(
     data,
     use_container_width=True,
     num_rows="dynamic",
     column_config={
-        "得意先": st.column_config.SelectboxColumn("得意先", options=CUSTOMERS),
-        "種類": st.column_config.SelectboxColumn("種類", options=TYPES),
+        "得意先": st.column_config.SelectboxColumn("得意先", options=customers),
+        "種類": st.column_config.SelectboxColumn("種類", options=types),
         "HEX": st.column_config.TextColumn("HEX"),
-        "保有数": st.column_config.NumberColumn("保有数", min_value=0.0, max_value=50.0, step=0.5),
-    }
+        "保有数": st.column_config.NumberColumn("保有数", min_value=0.0, max_value=MAX_STOCK, step=STEP),
+    },
 )
 
 if st.button("テーブル編集を保存", use_container_width=True):
-    save_data(edited_data)
+    save_data(inventory_sheet, edited_data)
     st.success("Googleスプレッドシートに保存しました")
     st.rerun()
+
+st.divider()
+
+
+# =========================
+# マスタ管理説明
+# =========================
+with st.expander("⚙️ 得意先マスタ・種類マスタの使い方"):
+    st.write("同じGoogleスプレッドシート内に以下のシートを作成・使用します。")
+    st.write("- 在庫")
+    st.write("- 得意先マスタ")
+    st.write("- 種類マスタ")
+    st.write("得意先マスタ・種類マスタは、A列の見出しを `名称` にして、その下に選択肢を入力してください。")
+    st.write("スプレッドシート側でマスタを編集した後は、上部の『スプレッドシートを再読み込み』を押してください。")
