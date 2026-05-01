@@ -5,7 +5,7 @@ from google.oauth2.service_account import Credentials
 import unicodedata
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 # =========================
@@ -33,11 +33,14 @@ MASTER_COLUMNS = ["名称"]
 
 DEFAULT_CUSTOMERS = ["自社", "東洋紡エンジニアリング", "その他"]
 DEFAULT_TYPES = ["アクリル", "メラミン", "粉体", "ウレタン", "エポキシ", "ラッカー", "その他"]
-GLOSS_OPTIONS = ["", "艶あり", "半艶", "艶消し", "3分艶", "3分艶あり", "5分艶", "7分艶", "その他"]
+
+# 5分艶は半艶と同じ扱いにするため不要
+GLOSS_OPTIONS = ["", "Gloss", "Semi-gloss", "Matte", "30% Gloss", "70% Gloss", "Other"]
 
 MAX_STOCK = 50.0
 STEP = 0.5
 HEX_PATTERN = re.compile(r"^#[0-9A-Fa-f]{6}$")
+DEFAULT_GRAY_VALUES = {"", "#999999", "#929396"}
 
 
 # =========================
@@ -84,7 +87,7 @@ st.markdown(
         letter-spacing:1px;
         white-space:nowrap;
     }
-    .gloss-badge {
+    .badge {
         display:inline-block;
         font-size:13px;
         color:#374151;
@@ -93,6 +96,7 @@ st.markdown(
         border-radius:999px;
         padding:2px 8px;
         margin-top:4px;
+        margin-right:4px;
         margin-bottom:4px;
     }
     .small-color-row {
@@ -132,38 +136,15 @@ st.markdown(
 # =========================
 # 共通関数
 # =========================
-
 def today_str():
     return datetime.now().strftime("%Y-%m-%d")
 
 
-def shelf_life_days(paint_type):
-    return 365 if "粉体" in str(paint_type) else 60
-
-
-def expiry_info(received_date,
-            location, paint_type):
-    try:
-        received = pd.to_datetime(received_date).date()
-    except Exception:
-        return "入荷日未設定 / No received date", "#6b7280"
-
-    days = shelf_life_days(paint_type)
-    expire_date = received + pd.Timedelta(days=days)
-    remaining = (expire_date - datetime.now().date()).days
-
-    if remaining < 0:
-        return f"期限切れ / Expired {abs(remaining)} days ago", "#dc2626"
-    if remaining <= 14:
-        return f"期限近い / {remaining} days left", "#d97706"
-    return f"期限 / Exp. {expire_date.strftime('%Y-%m-%d')} ({remaining} days left)", "#374151"
-
-
 def unit_label(qty):
-    return "pc" if float(qty) == 1 else "pcs"
+    qty = normalize_stock(qty)
+    return "pc" if qty == 1 else "pcs"
 
 
-# =========================
 def clean_code(value):
     if value is None:
         return ""
@@ -192,6 +173,28 @@ def normalize_stock(value):
         value = 0.0
     value = max(0.0, min(float(value), MAX_STOCK))
     return round(value * 2) / 2
+
+
+def shelf_life_days(paint_type):
+    # 粉体は1年以上。それ以外は60日目安。
+    return 365 if "粉体" in str(paint_type) else 60
+
+
+def expiry_info(received_date, paint_type):
+    try:
+        received = pd.to_datetime(received_date).date()
+    except Exception:
+        return "No received date", "#6b7280"
+
+    days = shelf_life_days(paint_type)
+    expire_date = received + timedelta(days=days)
+    remaining = (expire_date - datetime.now().date()).days
+
+    if remaining < 0:
+        return f"Expired {abs(remaining)} days ago", "#dc2626"
+    if remaining <= 14:
+        return f"Expiring soon: {remaining} days left", "#d97706"
+    return f"Exp. {expire_date.strftime('%Y-%m-%d')} ({remaining} days left)", "#374151"
 
 
 def can_display(qty):
@@ -243,8 +246,6 @@ def can_display_html(qty, hex_color):
 
 # =========================
 # Google Sheets接続
-# connect_spreadsheetだけは接続再利用のため cache_resource OK
-# load_dataにはキャッシュを使わない
 # =========================
 @st.cache_resource(ttl=3600)
 def connect_spreadsheet():
@@ -259,9 +260,6 @@ def connect_spreadsheet():
 
 
 def get_or_create_worksheet(spreadsheet, title, columns):
-    """シート取得。存在しなければ作成。
-    Google APIの読み取り回数を減らすため、既存シートには毎回 get_all_values() しない。
-    """
     try:
         return spreadsheet.worksheet(title)
     except gspread.WorksheetNotFound:
@@ -271,9 +269,6 @@ def get_or_create_worksheet(spreadsheet, title, columns):
 
 
 def ensure_master_has_default_values(ws, defaults):
-    """マスタが空のときだけ初期値を入れる。
-    読み取り回数節約のためA列だけ確認する。
-    """
     values = ws.col_values(1)
     if len(values) >= 2:
         return
@@ -283,9 +278,6 @@ def ensure_master_has_default_values(ws, defaults):
 
 @st.cache_resource(ttl=3600)
 def get_sheets():
-    """ワークシートオブジェクトはキャッシュする。
-    実データ load_data はキャッシュしないので、在庫変更は反映される。
-    """
     spreadsheet = connect_spreadsheet()
     inventory_ws = get_or_create_worksheet(spreadsheet, INVENTORY_SHEET, COLUMNS)
     history_ws = get_or_create_worksheet(spreadsheet, HISTORY_SHEET, HISTORY_COLUMNS)
@@ -299,13 +291,8 @@ def get_sheets():
 # =========================
 @st.cache_data(ttl=300)
 def load_master_by_sheet_name(sheet_name, defaults):
-    """得意先・種類マスタは5分キャッシュ。
-    在庫データ本体ではないため、API制限対策としてキャッシュする。
-    マスタを変更したら『マスタ再読み込み』ボタンでクリアできる。
-    """
     spreadsheet = connect_spreadsheet()
     ws = spreadsheet.worksheet(sheet_name)
-
     ensure_master_has_default_values(ws, defaults)
 
     values = ws.col_values(1)
@@ -325,7 +312,6 @@ def load_color_master():
     else:
         df = pd.DataFrame(columns=["日塗工番号", "色名", "HEX"])
 
-    # CSVの列名ゆれ対策
     rename_map = {}
     for col in df.columns:
         c = str(col).strip().lower()
@@ -344,15 +330,10 @@ def load_color_master():
     df = df[["日塗工番号", "色名", "HEX"]].copy()
     df["検索番号"] = df["日塗工番号"].apply(clean_code)
     df["HEX"] = df["HEX"].apply(normalize_hex)
-
     return df
 
 
 def color_lookup(number, color_df):
-    """日塗工CSVから色名・HEXを探す。
-    入力ゆれ対策として、完全一致のほかにハイフンなし・スペースなしでも照合する。
-    例：90-25A / 9025A、N-5 / N5 など。
-    """
     number_clean = clean_code(number)
 
     if number_clean == "":
@@ -365,10 +346,8 @@ def color_lookup(number, color_df):
         value = value.replace("　", "")
         return value
 
-    # 完全一致
     match = color_df[color_df["検索番号"] == number_clean]
 
-    # ゆれ吸収一致
     if match.empty:
         search_key = key(number_clean)
         tmp = color_df.copy()
@@ -385,7 +364,6 @@ def color_lookup(number, color_df):
 
 # =========================
 # 在庫読み込み・保存
-# load_dataはキャッシュなし
 # =========================
 def load_data(sheet, color_df):
     values = sheet.get_all_values()
@@ -414,24 +392,15 @@ def load_data(sheet, color_df):
     df["種類"] = df["種類"].astype(str)
     df["No"] = df["No"].astype(str).apply(clean_code)
     df["名称"] = df["名称"].astype(str)
+    df["艶"] = df["艶"].astype(str)
+    df["保管場所"] = df["保管場所"].astype(str)
     df["保有数"] = df["保有数"].apply(normalize_stock)
     df["入荷日"] = df["入荷日"].astype(str)
     df.loc[df["入荷日"].str.strip() == "", "入荷日"] = today_str()
-    df["入荷日"] = df["入荷日"].astype(str)
-    df.loc[df["入荷日"].str.strip() == "", "入荷日"] = today_str()
 
-    # HEXを自動補完する。
-    # 1. シートのHEXが正しい場合は、シート側を優先する
-    # 2. HEXが空欄・不正・仮グレーの場合だけ nittoko_colors.csv から取得する
-    # 3. 名称が空欄の場合も nittoko_colors.csv から補完する
-    #
-    # 注意：CSVを常に優先すると、スプレッドシートで手修正したHEXが
-    # アプリ側で上書きされるため、ここではシート側の有効HEXを優先する。
     changed = False
     fixed_hex_list = []
     fixed_name_list = []
-
-    DEFAULT_GRAY_VALUES = {"", "#999999", "#929396"}
 
     for _, row in df.iterrows():
         raw_hex = str(row["HEX"]).strip().upper()
@@ -464,8 +433,6 @@ def load_data(sheet, color_df):
     df["HEX"] = fixed_hex_list
     df["名称"] = fixed_name_list
 
-    # シート側のHEX/名称も自動で埋め戻す。
-    # これにより、スプレッドシートにNoだけ入力しても次回読み込み時にHEXが入る。
     if changed:
         save_data(sheet, df)
 
@@ -483,6 +450,7 @@ def save_data(sheet, df):
     df["No"] = df["No"].apply(clean_code)
     df["HEX"] = df["HEX"].apply(normalize_hex)
     df["保有数"] = df["保有数"].apply(normalize_stock)
+    df["入荷日"] = df["入荷日"].apply(lambda x: x.strftime("%Y-%m-%d") if hasattr(x, "strftime") else str(x))
 
     sheet.clear()
     sheet.update([COLUMNS] + df.astype(str).values.tolist(), "A1")
@@ -509,8 +477,6 @@ def add_or_update_data(data, customer, paint_type, number_clean, name, hex_color
     data = data.copy()
     data["検索No"] = data["No"].apply(clean_code)
 
-    # 現状仕様：Noが同じなら更新
-    # 得意先・種類ごとに同じNoを別管理したい場合は、ここを複合キーに変更する
     if number_clean in data["検索No"].values:
         data.loc[data["検索No"] == number_clean, COLUMNS] = [
             customer,
@@ -521,6 +487,7 @@ def add_or_update_data(data, customer, paint_type, number_clean, name, hex_color
             gloss,
             stock,
             received_date,
+            location,
         ]
     else:
         new_row = pd.DataFrame([
@@ -551,7 +518,7 @@ try:
     types = load_master_by_sheet_name(TYPE_MASTER_SHEET, DEFAULT_TYPES)
     data = load_data(inventory_sheet, color_df)
 except Exception as e:
-    st.error("データ読み込みでエラーが発生しました。")
+    st.error("データ読み込みでエラーが発生しました。 / Failed to load data.")
     st.exception(e)
     st.stop()
 
@@ -573,14 +540,11 @@ if st.button("⚙️ マスタ再読み込み / Reload Masters", use_container_w
     load_master_by_sheet_name.clear()
     st.rerun()
 
-# 色が見つからないデータを画面に出す
-DEFAULT_GRAY_VALUES = {"", "#999999", "#929396"}
 gray_rows = data[data["HEX"].astype(str).str.upper().isin(DEFAULT_GRAY_VALUES)].copy()
 if len(gray_rows) > 0:
-    with st.expander("⚠️ 色がグレー表示になっているデータ"):
-        st.write("以下は、スプレッドシートのHEXが空欄・仮グレー、または nittoko_colors.csv で色が見つからない可能性があります。")
-        st.dataframe(gray_rows[["No", "名称", "HEX", "保有数"]], use_container_width=True)
-        st.write("対処方法：GoogleスプレッドシートのHEX列に正しい `#RRGGBB` を入れるか、nittoko_colors.csv に該当番号とHEXを追加してください。")
+    with st.expander("⚠️ 色がグレー表示になっているデータ / Gray Color Data"):
+        st.write("HEXが空欄・仮グレー、または nittoko_colors.csv で色が見つからない可能性があります。")
+        st.dataframe(gray_rows[["No", "名称", "HEX", "保有数", "保管場所"]], use_container_width=True)
 
 st.divider()
 
@@ -605,15 +569,15 @@ auto_name, auto_hex, found_color = color_lookup(number_clean, color_df)
 
 if number_clean:
     if found_color:
-        st.success(f"{number_clean} の色を自動表示しました")
+        st.success(f"{number_clean} の色を自動表示しました / Color found")
     else:
-        st.warning(f"{number_clean} は nittoko_colors.csv にありません")
+        st.warning(f"{number_clean} は nittoko_colors.csv にありません / Not found in color master")
 
 name = name_input if name_input else auto_name
 
 with col3:
     hex_color = st.color_picker("色 / Color", auto_hex)
-    gloss = st.selectbox("艶 / Finish", GLOSS_OPTIONS)
+    gloss = st.selectbox("Finish", GLOSS_OPTIONS)
     stock = st.number_input("保有数 / Stock", min_value=0.0, max_value=MAX_STOCK, step=STEP)
     received_date = st.date_input("入荷日 / Received Date", value=datetime.now().date())
     location = st.text_input("保管場所 / Location", placeholder="例: A-1, 塗料庫右-3")
@@ -628,7 +592,18 @@ if st.button("追加 / 更新して保存 / Add or Update", type="primary", use_
         if existing_mask.any():
             before_qty = data.loc[existing_mask, "保有数"].iloc[0]
 
-        data = add_or_update_data(data, customer, paint_type, number_clean, name, hex_color, gloss, stock, received_date.strftime("%Y-%m-%d"), location)
+        data = add_or_update_data(
+            data,
+            customer,
+            paint_type,
+            number_clean,
+            name,
+            hex_color,
+            gloss,
+            stock,
+            received_date.strftime("%Y-%m-%d"),
+            location,
+        )
         save_data(inventory_sheet, data)
 
         saved_row = data.loc[data["No"].apply(clean_code) == number_clean].iloc[0]
@@ -636,7 +611,7 @@ if st.button("追加 / 更新して保存 / Add or Update", type="primary", use_
         diff = "" if before_qty == "" else normalize_stock(stock) - normalize_stock(before_qty)
         append_history(history_sheet, operation, saved_row, before_qty, stock, diff, "入力フォーム")
 
-        st.success("保存しました")
+        st.success("保存しました / Saved")
         st.rerun()
 
 st.divider()
@@ -650,30 +625,31 @@ st.subheader("検索・並び替え / Search and Sort")
 c1, c2 = st.columns([2, 1])
 
 with c1:
-    search = st.text_input("色番号・名称・得意先・種類で検索 / Search by Color No., Name, Customer, Type")
-    gloss_filter = st.selectbox("艶フィルター / Finish Filter", ["All"] + GLOSS_OPTIONS)
-
-("色番号・名称・得意先・種類で検索 / Search by Color No., Name, Customer, Type")
+    search = st.text_input("色番号・名称・得意先・種類・場所で検索 / Search by No., Name, Customer, Type, Location")
+    gloss_filter = st.selectbox("Finish Filter", ["All"] + GLOSS_OPTIONS)
+    location_filter = st.text_input("場所フィルター / Location Filter", placeholder="例: A-1, 右-3")
 
 with c2:
-    sort_mode = st.selectbox("並び替え / Sort", ["色番号順", "保有数順", "得意先順", "種類順"])
+    sort_mode = st.selectbox("並び替え / Sort", ["色番号順", "保有数順", "得意先順", "種類順", "場所順", "入荷日順"])
 
 owned = data[data["保有数"] > 0].copy()
 
 if search:
     s = clean_code(search)
-
     owned = owned[
         owned["No"].astype(str).apply(clean_code).str.contains(s, na=False)
         | owned["名称"].astype(str).apply(clean_code).str.contains(s, na=False)
         | owned["得意先"].astype(str).apply(clean_code).str.contains(s, na=False)
         | owned["種類"].astype(str).apply(clean_code).str.contains(s, na=False)
+        | owned["保管場所"].astype(str).apply(clean_code).str.contains(s, na=False)
     ]
 
-# 艶フィルター
 if gloss_filter != "All":
     owned = owned[owned["艶"] == gloss_filter]
 
+if location_filter:
+    lf = clean_code(location_filter)
+    owned = owned[owned["保管場所"].astype(str).apply(clean_code).str.contains(lf, na=False)]
 
 if sort_mode == "色番号順":
     owned = owned.sort_values("No")
@@ -683,6 +659,10 @@ elif sort_mode == "得意先順":
     owned = owned.sort_values("得意先")
 elif sort_mode == "種類順":
     owned = owned.sort_values("種類")
+elif sort_mode == "場所順":
+    owned = owned.sort_values("保管場所")
+elif sort_mode == "入荷日順":
+    owned = owned.sort_values("入荷日")
 
 left, right = st.columns([2, 1])
 
@@ -699,6 +679,9 @@ with left:
         for idx, row in owned.iterrows():
             display_hex = normalize_hex(row["HEX"])
             expiry_text, expiry_color = expiry_info(row.get("入荷日", ""), row.get("種類", ""))
+            qty = normalize_stock(row["保有数"])
+            location_text = str(row.get("保管場所", "")).strip() or "No Location"
+            gloss_text = str(row.get("艶", "")).strip() or "No Finish"
 
             st.markdown(
                 f"""
@@ -708,11 +691,11 @@ with left:
                         <div class="paint-info">
                             <b>{row['得意先']} / {row['種類']}</b><br>
                             <span class="paint-no-name">{row['No']}　{row['名称']}</span><br>
-                            <span class="gloss-badge">{row['艶'] if str(row['艶']).strip() else '艶未設定'}</span>
-                            <span class="gloss-badge" style="color:{expiry_color};">入荷日 / Received: {row.get('入荷日', '')} ｜ {expiry_text}</span><br>
-                            <span class="gloss-badge">📍 {row.get('保管場所','')}</span><br>
-                            <span>{can_display_html(row['保有数'], display_hex)}</span>
-                            <span style="font-size:18px; margin-left:10px; vertical-align:middle;">{row['保有数']:g} {unit_label(row['保有数'])}</span>
+                            <span class="badge">{gloss_text}</span>
+                            <span class="badge" style="color:{expiry_color};">Received: {row.get('入荷日', '')} ｜ {expiry_text}</span>
+                            <span class="badge">📍 {location_text}</span><br>
+                            <span>{can_display_html(qty, display_hex)}</span>
+                            <span style="font-size:18px; margin-left:10px; vertical-align:middle;">{qty:g} {unit_label(qty)}</span>
                         </div>
                     </div>
                 </div>
@@ -775,11 +758,12 @@ with left:
                             )
                             edit_name = st.text_input("名称 / Name", value=str(row["名称"]), key=f"edit_name_{idx}")
                             edit_gloss = st.selectbox(
-                                "艶 / Finish",
+                                "Finish",
                                 GLOSS_OPTIONS,
                                 index=GLOSS_OPTIONS.index(row["艶"]) if row["艶"] in GLOSS_OPTIONS else 0,
                                 key=f"edit_gloss_{idx}",
                             )
+                            edit_location = st.text_input("保管場所 / Location", value=str(row.get("保管場所", "")), key=f"edit_loc_{idx}")
 
                         with ec2:
                             edit_hex = st.color_picker("色 / Color", normalize_hex(row["HEX"]), key=f"edit_hex_{idx}")
@@ -818,8 +802,7 @@ with left:
                             data.loc[idx, "艶"] = edit_gloss
                             data.loc[idx, "保有数"] = edit_qty
                             data.loc[idx, "入荷日"] = edit_received_date.strftime("%Y-%m-%d")
-                            edit_location = st.text_input("保管場所 / Location", value=str(row.get("保管場所","")), key=f"edit_loc_{idx}")
-                            data.loc[idx, "保管場所"] = edit_location("%Y-%m-%d")
+                            data.loc[idx, "保管場所"] = edit_location
                             save_data(inventory_sheet, data)
                             append_history(
                                 history_sheet,
@@ -831,7 +814,7 @@ with left:
                                 memo,
                             )
                             st.session_state.pop(edit_key, None)
-                            st.success("変更しました")
+                            st.success("変更しました / Updated")
                             st.rerun()
 
                         if cancelled:
@@ -849,7 +832,7 @@ with left:
                             save_data(inventory_sheet, data)
                             append_history(history_sheet, "削除", deleted_row, before_qty, 0, -before_qty, "保有リストから削除")
                             st.session_state.pop(pending_key, None)
-                            st.success("削除しました")
+                            st.success("削除しました / Deleted")
                             st.rerun()
 
                     with cb:
@@ -869,12 +852,13 @@ with right:
     else:
         for _, row in owned.iterrows():
             display_hex = normalize_hex(row["HEX"])
+            qty = normalize_stock(row["保有数"])
 
             st.markdown(
                 f"""
                 <div class="small-color-row">
                     <div class="small-color-chip" style="background-color:{display_hex};"></div>
-                    <div>{row['No']}　{row['名称']}　{row['保有数']:g} {unit_label(row['保有数'])}</div>
+                    <div>{row['No']}　{row['名称']}　{qty:g} {unit_label(qty)}<br><small>📍 {row.get('保管場所', '')}</small></div>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -904,7 +888,7 @@ edited_data = st.data_editor(
         "得意先": st.column_config.SelectboxColumn("得意先 / Customer", options=customers),
         "種類": st.column_config.SelectboxColumn("種類 / Type", options=types),
         "HEX": st.column_config.TextColumn("HEX / Color Code"),
-        "艶": st.column_config.SelectboxColumn("艶 / Finish", options=GLOSS_OPTIONS),
+        "艶": st.column_config.SelectboxColumn("Finish", options=GLOSS_OPTIONS),
         "保有数": st.column_config.NumberColumn("保有数 / Stock", min_value=0.0, max_value=MAX_STOCK, step=STEP),
         "入荷日": st.column_config.DateColumn("入荷日 / Received Date"),
         "保管場所": st.column_config.TextColumn("保管場所 / Location"),
@@ -956,7 +940,8 @@ st.divider()
 with st.expander("⚙️ 得意先マスタ・種類マスタの使い方 / How to Use Master Sheets"):
     st.write("同じGoogleスプレッドシート内に以下のシートを作成・使用します。")
     st.write("- 在庫")
+    st.write("- 履歴")
     st.write("- 得意先マスタ")
     st.write("- 種類マスタ")
     st.write("得意先マスタ・種類マスタは、A列の見出しを `名称` にして、その下に選択肢を入力してください。")
-    st.write("スプレッドシート側でマスタを編集した後は、上部の『スプレッドシートを再読み込み』を押してください。")
+    st.write("在庫シートは、必要な列が無い場合でもアプリ側で空欄として扱います。保存時に列が整います。")
