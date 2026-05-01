@@ -102,9 +102,11 @@ st.markdown(
     h2, h3 { margin-top: 0.3rem !important; margin-bottom: 0.2rem !important; font-size: 1.05rem !important; }
     h1 { font-size: 1.3rem !important; margin-bottom: 0 !important; }
     .stCaption { margin-bottom: 0.1rem !important; }
-    [data-testid="metric-container"] { padding: 3px 6px !important; }
-    [data-testid="stMetricValue"] { font-size: 1.3rem !important; }
-    [data-testid="stMetricLabel"] { font-size: 0.7rem !important; }
+    [data-testid="metric-container"] { padding: 2px 4px !important; }
+    [data-testid="stMetricValue"] { font-size: 1.1rem !important; line-height:1.2 !important; }
+    [data-testid="stMetricLabel"] { font-size: 0.65rem !important; }
+    /* スマホ時のカラム間隔を詰める */
+    div[data-testid="column"] { padding-left: 4px !important; padding-right: 4px !important; }
     .stTextInput input, .stNumberInput input,
     .stSelectbox div[data-baseweb="select"] {
         padding-top: 4px !important; padding-bottom: 4px !important; min-height: 36px !important;
@@ -561,21 +563,20 @@ except Exception as e:
 order_count = len(data[data["発注状況"].astype(str).str.strip().isin(["発注予定", "発注済み", "納品待ち"])])
 
 if is_mobile:
-    # スマホ：看板を小さく・ボタンを大きく1行に
-    m1, m2, m3 = st.columns(3)
-    with m1:
-        st.metric("登録件数", len(data))
-    with m2:
-        st.metric("総保有数", f"{data['保有数'].sum():g}")
-    with m3:
-        st.metric("発注中", order_count)
-    mb1, mb2 = st.columns(2)
-    with mb1:
-        if st.button("🔄 再読み込み", use_container_width=True):
+    # スマホ：1行にメトリクス3つ＋ボタン2つ
+    ma1, ma2, ma3, ma4, ma5 = st.columns([1.2, 1.2, 1.2, 1.5, 1.5])
+    with ma1:
+        st.metric("件数", len(data))
+    with ma2:
+        st.metric("総数", f"{data['保有数'].sum():g}")
+    with ma3:
+        st.metric("発注", order_count)
+    with ma4:
+        if st.button("🔄", use_container_width=True, help="再読み込み"):
             load_color_master.clear()
             st.rerun()
-    with mb2:
-        if st.button("💻 PCモードへ", use_container_width=True):
+    with ma5:
+        if st.button("💻 PC", use_container_width=True):
             st.session_state["mobile_mode"] = False
             st.rerun()
 else:
@@ -789,35 +790,34 @@ def render_card_buttons(idx, row, qty):
     qr_key = f"qr_{idx}"
 
     if is_mobile:
-        # スマホ：＋−を大きく2列×2行
-        ra1, ra2 = st.columns(2)
-        with ra1:
-            if st.button("＋ 0.5", key=f"plus05_{idx}", use_container_width=True):
+        # スマホ：＋−を4列1行、編集QR削除を3列1行
+        rb1, rb2, rb3, rb4 = st.columns(4)
+        with rb1:
+            if st.button("＋0.5", key=f"plus05_{idx}", use_container_width=True):
                 before = normalize_stock(data.loc[idx,"保有数"])
                 after = min(before+0.5, MAX_STOCK)
                 data.loc[idx,"保有数"] = after
                 save_data(inventory_sheet, data)
                 append_history(history_sheet,"入庫",data.loc[idx],before,after,after-before,"SP +0.5")
                 st.rerun()
-        with ra2:
-            if st.button("＋ 1", key=f"plus1_{idx}", use_container_width=True):
+        with rb2:
+            if st.button("＋1", key=f"plus1_{idx}", use_container_width=True):
                 before = normalize_stock(data.loc[idx,"保有数"])
                 after = min(before+1.0, MAX_STOCK)
                 data.loc[idx,"保有数"] = after
                 save_data(inventory_sheet, data)
                 append_history(history_sheet,"入庫",data.loc[idx],before,after,after-before,"SP +1")
                 st.rerun()
-        rb1, rb2 = st.columns(2)
-        with rb1:
-            if st.button("− 0.5", key=f"minus05_{idx}", use_container_width=True):
+        with rb3:
+            if st.button("−0.5", key=f"minus05_{idx}", use_container_width=True):
                 before = normalize_stock(data.loc[idx,"保有数"])
                 after = max(before-0.5, 0)
                 data.loc[idx,"保有数"] = after
                 save_data(inventory_sheet, data)
                 append_history(history_sheet,"出庫",data.loc[idx],before,after,after-before,"SP -0.5")
                 st.rerun()
-        with rb2:
-            if st.button("− 1", key=f"minus1_{idx}", use_container_width=True):
+        with rb4:
+            if st.button("−1", key=f"minus1_{idx}", use_container_width=True):
                 before = normalize_stock(data.loc[idx,"保有数"])
                 after = max(before-1.0, 0)
                 data.loc[idx,"保有数"] = after
@@ -1002,28 +1002,25 @@ elif is_mobile:
             bg = ORDER_BADGE_COLOR[order_status]
             order_badge_html = f'<span style="background:{bg};color:#fff;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:600;">📦 {order_status}</span>'
 
-        st.markdown(
-            f"""
-            <div class="sp-card">
-              <div class="sp-card-header">
-                <div class="sp-chip" style="background:{display_hex};"></div>
-                <div style="flex:1;">
-                  <div class="sp-title">{row['No']}　{row['名称']}</div>
-                  <div class="sp-sub">{row['種類']} / {gloss_text} / 📍{location_text}</div>
-                  <div style="display:flex;align-items:center;gap:10px;margin-top:4px;">
-                    <span style="font-size:20px;font-weight:700;color:#1e3a5f;">{qty:g} {unit_label(qty)}</span>
-                    {can_display_html(qty, display_hex)}
-                  </div>
-                  <div style="margin-top:4px;">
-                    <span style="font-size:11px;color:{expiry_color};">📅 {expiry_text}</span>
-                    {"&nbsp;&nbsp;" + order_badge_html if order_badge_html else ""}
-                  </div>
-                </div>
-              </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        # order_badge_htmlを事前に組み立てる（f-string内の三項演算子を避ける）
+        order_extra = f"&nbsp;&nbsp;{order_badge_html}" if order_badge_html else ""
+        cans_html = can_display_html(qty, display_hex)
+        sp_card_html = f"""
+<div class="sp-card">
+  <div style="display:flex;align-items:flex-start;gap:10px;">
+    <div style="width:50px;height:50px;border-radius:8px;border:2px solid #94a3b8;background:{display_hex};flex:0 0 auto;"></div>
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:17px;font-weight:700;line-height:1.2;">{row["No"]}　{row["名称"]}</div>
+      <div style="font-size:11px;color:#64748b;margin-top:2px;">{row["種類"]} / {gloss_text} / 📍{location_text}</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+        <span style="font-size:18px;font-weight:700;color:#1e3a5f;">{qty:g} {unit_label(qty)}</span>
+        {cans_html}
+      </div>
+      <div style="margin-top:3px;font-size:11px;color:{expiry_color};">📅 {expiry_text}{order_extra}</div>
+    </div>
+  </div>
+</div>"""
+        st.markdown(sp_card_html, unsafe_allow_html=True)
         render_card_buttons(idx, row, qty)
         st.markdown("<div style='margin:2px 0;'></div>", unsafe_allow_html=True)
 else:
