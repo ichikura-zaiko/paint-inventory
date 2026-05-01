@@ -625,6 +625,17 @@ if is_mobile:
         st.rerun()
 
 # =========================
+# URLパラメータ search= の自動読み込み
+# =========================
+_url_search = st.query_params.get("search", "")
+if _url_search:
+    # スマホモードを自動ON・searchをsession_stateにセット
+    st.session_state["mobile_mode"] = True
+    st.session_state["url_search"] = _url_search
+    st.query_params.clear()
+    st.rerun()
+
+# =========================
 # 上部操作
 # =========================
 order_count = len(data[data["発注状況"].astype(str).str.strip().isin(["発注予定", "発注済み", "納品待ち"])])
@@ -689,7 +700,8 @@ if is_mobile:
     # スマホ：検索を先に・入力はexpander
     # =========================
     # 検索バー（最上部）
-    search = st.text_input("🔍 番号・名称・場所 / Search", placeholder="No. / Name / Location...", label_visibility="collapsed")
+    _default_search = st.session_state.pop("url_search", "")
+    search = st.text_input("🔍 番号・名称・場所 / Search", value=_default_search, placeholder="No. / Name / Location...", label_visibility="collapsed")
     sf1, sf2 = st.columns(2)
     with sf1:
         order_filter = st.selectbox("発注状況", ["All／すべて"] + ORDER_OPTIONS, label_visibility="collapsed")
@@ -958,24 +970,24 @@ def render_card_buttons(idx, row, qty):
 
     # QRコード表示
     if st.session_state.get(qr_key):
-        qr_text = (
-            f"No: {row['No']}\n名称: {row['名称']}\n種類: {row['種類']}\n"
-            f"艶: {row.get('艶','')}\n保管場所: {row.get('保管場所','')}\n保有数: {qty:g} {unit_label(qty)}"
-        )
-        qr_b64 = make_qr_base64(qr_text)
+        qr_url = f"https://bhfkbzgrfcav5rw6wzfg9l.streamlit.app/?search={row['No']}"
+        qr_b64 = make_qr_base64(qr_url)
         st.markdown(
             f"""<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;
                 padding:12px;margin-top:6px;display:flex;align-items:flex-start;gap:12px;">
-                <img src="data:image/png;base64,{qr_b64}" width="130"
+                <img src="data:image/png;base64,{qr_b64}" width="140"
                      style="border:1px solid #ccc;border-radius:4px;"/>
-                <div style="font-size:13px;color:#374151;line-height:2;">
+                <div style="font-size:13px;color:#374151;line-height:1.9;">
                     <b>{row['No']}　{row['名称']}</b><br>
-                    種類: {row['種類']}<br>艶: {row.get('艶','—')}<br>
-                    場所: {row.get('保管場所','—')}<br>保有数: {qty:g} {unit_label(qty)}
+                    種類: {row['種類']}<br>
+                    艶: {row.get('艶','—')}<br>
+                    場所: {row.get('保管場所','—')}<br>
+                    保有数: {qty:g} {unit_label(qty)}<br>
+                    <span style="font-size:11px;color:#64748b;">📱 読み取るとアプリで検索</span>
                 </div></div>""",
             unsafe_allow_html=True,
         )
-        if st.button("QRを閉じる", key=f"qr_close_{idx}", use_container_width=True):
+        if st.button("QRを閉じる / Close", key=f"qr_close_{idx}", use_container_width=True):
             st.session_state.pop(qr_key, None)
             st.rerun()
 
