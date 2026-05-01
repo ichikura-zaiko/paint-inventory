@@ -15,32 +15,6 @@ from datetime import datetime, timedelta
 # 画面設定
 # =========================
 st.set_page_config(page_title="一倉 塗料管理システム", page_icon="🎨", layout="wide")
-if is_mobile:
-    st.markdown(
-        """
-        <div style="background:linear-gradient(90deg,#1e3a5f,#2e6da4);padding:6px 12px;border-radius:8px;margin-bottom:4px;display:flex;align-items:center;gap:8px;">
-            <span style="font-size:1.3rem;">🎨</span>
-            <div>
-                <div style="color:#ffffff;font-size:1.1rem;font-weight:700;letter-spacing:1px;">一倉　塗料管理システム</div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-else:
-    st.markdown(
-        """
-        <div style="background:linear-gradient(90deg,#1e3a5f,#2e6da4);padding:10px 18px;border-radius:10px;margin-bottom:6px;display:flex;align-items:center;gap:12px;">
-            <span style="font-size:2rem;">🎨</span>
-            <div>
-                <div style="color:#ffffff;font-size:1.5rem;font-weight:700;letter-spacing:2px;">一倉　塗料管理システム</div>
-                <div style="color:#a8c8e8;font-size:0.8rem;">Ichikura Paint Inventory Management System</div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    st.caption("Googleスプレッドシート直結・キャッシュなし / Connected to Google Sheets, no inventory cache")
 
 
 # =========================
@@ -82,6 +56,35 @@ DEFAULT_GRAY_VALUES = {"", "#999999", "#929396"}
 if "mobile_mode" not in st.session_state:
     st.session_state["mobile_mode"] = False
 is_mobile = st.session_state["mobile_mode"]
+
+
+# =========================
+# 看板ヘッダー
+# =========================
+if is_mobile:
+    st.markdown(
+        """
+        <div style="background:linear-gradient(90deg,#1e3a5f,#2e6da4);padding:6px 12px;border-radius:8px;margin-bottom:4px;display:flex;align-items:center;gap:8px;">
+            <span style="font-size:1.3rem;">🎨</span>
+            <div style="color:#ffffff;font-size:1.1rem;font-weight:700;letter-spacing:1px;">一倉　塗料管理システム</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+else:
+    st.markdown(
+        """
+        <div style="background:linear-gradient(90deg,#1e3a5f,#2e6da4);padding:10px 18px;border-radius:10px;margin-bottom:6px;display:flex;align-items:center;gap:12px;">
+            <span style="font-size:2rem;">🎨</span>
+            <div>
+                <div style="color:#ffffff;font-size:1.5rem;font-weight:700;letter-spacing:2px;">一倉　塗料管理システム</div>
+                <div style="color:#a8c8e8;font-size:0.8rem;">Ichikura Paint Inventory Management System</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.caption("Googleスプレッドシート直結・キャッシュなし / Connected to Google Sheets, no inventory cache")
 
 
 # =========================
