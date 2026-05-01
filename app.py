@@ -99,7 +99,6 @@ def color_lookup(number):
     return number_clean, "#999999"
 
 
-@st.cache_data(ttl=30)
 def load_data():
     values = sheet.get_all_values()
 
