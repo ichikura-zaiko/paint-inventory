@@ -27,12 +27,13 @@ HISTORY_SHEET = "履歴"
 CUSTOMER_MASTER_SHEET = "得意先マスタ"
 TYPE_MASTER_SHEET = "種類マスタ"
 
-COLUMNS = ["得意先", "種類", "No", "名称", "HEX", "保有数"]
+COLUMNS = ["得意先", "種類", "No", "名称", "HEX", "艶", "保有数"]
 HISTORY_COLUMNS = ["日時", "操作", "得意先", "種類", "No", "名称", "変更前", "変更後", "差分", "メモ"]
 MASTER_COLUMNS = ["名称"]
 
 DEFAULT_CUSTOMERS = ["自社", "東洋紡エンジニアリング", "その他"]
 DEFAULT_TYPES = ["アクリル", "メラミン", "粉体", "ウレタン", "エポキシ", "ラッカー", "その他"]
+GLOSS_OPTIONS = ["", "艶あり", "半艶", "艶消し", "3分艶", "3分艶あり", "5分艶", "7分艶", "その他"]
 
 MAX_STOCK = 50.0
 STEP = 0.5
@@ -82,6 +83,17 @@ st.markdown(
         font-size:28px;
         letter-spacing:1px;
         white-space:nowrap;
+    }
+    .gloss-badge {
+        display:inline-block;
+        font-size:13px;
+        color:#374151;
+        background:#f3f4f6;
+        border:1px solid #d1d5db;
+        border-radius:999px;
+        padding:2px 8px;
+        margin-top:4px;
+        margin-bottom:4px;
     }
     .small-color-row {
         display:flex;
@@ -457,7 +469,7 @@ def append_history(history_sheet, operation, row, before_qty="", after_qty="", d
     history_sheet.append_row(history_row, value_input_option="USER_ENTERED")
 
 
-def add_or_update_data(data, customer, paint_type, number_clean, name, hex_color, stock):
+def add_or_update_data(data, customer, paint_type, number_clean, name, hex_color, gloss, stock):
     data = data.copy()
     data["検索No"] = data["No"].apply(clean_code)
 
@@ -470,6 +482,7 @@ def add_or_update_data(data, customer, paint_type, number_clean, name, hex_color
             number_clean,
             name,
             hex_color,
+            gloss,
             stock,
         ]
     else:
@@ -480,6 +493,7 @@ def add_or_update_data(data, customer, paint_type, number_clean, name, hex_color
                 "No": number_clean,
                 "名称": name,
                 "HEX": hex_color,
+                "艶": gloss,
                 "保有数": stock,
             }
         ])
@@ -560,6 +574,7 @@ name = name_input if name_input else auto_name
 
 with col3:
     hex_color = st.color_picker("色", auto_hex)
+    gloss = st.selectbox("艶", GLOSS_OPTIONS)
     stock = st.number_input("保有数", min_value=0.0, max_value=MAX_STOCK, step=STEP)
     st.markdown(f"<div>{can_display_html(stock, hex_color)}</div>", unsafe_allow_html=True)
 
@@ -572,7 +587,7 @@ if st.button("追加 / 更新して保存", type="primary", use_container_width=
         if existing_mask.any():
             before_qty = data.loc[existing_mask, "保有数"].iloc[0]
 
-        data = add_or_update_data(data, customer, paint_type, number_clean, name, hex_color, stock)
+        data = add_or_update_data(data, customer, paint_type, number_clean, name, hex_color, gloss, stock)
         save_data(inventory_sheet, data)
 
         saved_row = data.loc[data["No"].apply(clean_code) == number_clean].iloc[0]
@@ -642,6 +657,7 @@ with left:
                         <div class="paint-info">
                             <b>{row['得意先']} / {row['種類']}</b><br>
                             <span class="paint-no-name">{row['No']}　{row['名称']}</span><br>
+                            <span class="gloss-badge">{row['艶'] if str(row['艶']).strip() else '艶未設定'}</span><br>
                             <span>{can_display_html(row['保有数'], display_hex)}</span>
                             <span style="font-size:18px; margin-left:10px; vertical-align:middle;">{row['保有数']:g}個</span>
                         </div>
@@ -705,6 +721,12 @@ with left:
                                 key=f"edit_type_{idx}",
                             )
                             edit_name = st.text_input("名称", value=str(row["名称"]), key=f"edit_name_{idx}")
+                            edit_gloss = st.selectbox(
+                                "艶",
+                                GLOSS_OPTIONS,
+                                index=GLOSS_OPTIONS.index(row["艶"]) if row["艶"] in GLOSS_OPTIONS else 0,
+                                key=f"edit_gloss_{idx}",
+                            )
 
                         with ec2:
                             edit_hex = st.color_picker("色", normalize_hex(row["HEX"]), key=f"edit_hex_{idx}")
@@ -731,6 +753,7 @@ with left:
                             data.loc[idx, "種類"] = edit_type
                             data.loc[idx, "名称"] = edit_name
                             data.loc[idx, "HEX"] = edit_hex
+                            data.loc[idx, "艶"] = edit_gloss
                             data.loc[idx, "保有数"] = edit_qty
                             save_data(inventory_sheet, data)
                             append_history(
@@ -813,6 +836,7 @@ edited_data = st.data_editor(
         "得意先": st.column_config.SelectboxColumn("得意先", options=customers),
         "種類": st.column_config.SelectboxColumn("種類", options=types),
         "HEX": st.column_config.TextColumn("HEX"),
+        "艶": st.column_config.SelectboxColumn("艶", options=GLOSS_OPTIONS),
         "保有数": st.column_config.NumberColumn("保有数", min_value=0.0, max_value=MAX_STOCK, step=STEP),
     },
 )
