@@ -134,6 +134,11 @@ st.markdown(
             padding-right: 0.4rem !important;
         }
     }
+    /* Streamlit内部のshadow DOM対応 */
+    button[kind="secondary"], button[kind="primary"] {
+        min-height: unset !important;
+        height: auto !important;
+    }
     hr { margin-top: 0.3rem !important; margin-bottom: 0.3rem !important; }
     .stSelectbox label, .stTextInput label, .stNumberInput label,
     .stDateInput label, .stColorPicker label {
@@ -578,6 +583,48 @@ except Exception as e:
 
 
 # =========================
+# スマホHTMLボタンのアクション処理
+# =========================
+if is_mobile:
+    params = st.query_params
+    sp_action = params.get("sp_action", "")
+    sp_idx = params.get("sp_idx", "")
+    if sp_action and sp_idx:
+        try:
+            idx = int(sp_idx)
+            before = normalize_stock(data.loc[idx, "保有数"])
+            if sp_action == "p05":
+                after = min(before + 0.5, MAX_STOCK)
+                data.loc[idx, "保有数"] = after
+                save_data(inventory_sheet, data)
+                append_history(history_sheet, "入庫", data.loc[idx], before, after, after-before, "SP+0.5")
+            elif sp_action == "p1":
+                after = min(before + 1.0, MAX_STOCK)
+                data.loc[idx, "保有数"] = after
+                save_data(inventory_sheet, data)
+                append_history(history_sheet, "入庫", data.loc[idx], before, after, after-before, "SP+1")
+            elif sp_action == "m05":
+                after = max(before - 0.5, 0)
+                data.loc[idx, "保有数"] = after
+                save_data(inventory_sheet, data)
+                append_history(history_sheet, "出庫", data.loc[idx], before, after, after-before, "SP-0.5")
+            elif sp_action == "m1":
+                after = max(before - 1.0, 0)
+                data.loc[idx, "保有数"] = after
+                save_data(inventory_sheet, data)
+                append_history(history_sheet, "出庫", data.loc[idx], before, after, after-before, "SP-1")
+            elif sp_action == "edit":
+                st.session_state[f"edit_{idx}"] = not st.session_state.get(f"edit_{idx}", False)
+            elif sp_action == "qr":
+                st.session_state[f"qr_{idx}"] = not st.session_state.get(f"qr_{idx}", False)
+            elif sp_action == "del":
+                st.session_state[f"pending_delete_{idx}"] = True
+        except Exception:
+            pass
+        st.query_params.clear()
+        st.rerun()
+
+# =========================
 # 上部操作
 # =========================
 order_count = len(data[data["発注状況"].astype(str).str.strip().isin(["発注予定", "発注済み", "納品待ち"])])
@@ -823,64 +870,42 @@ def render_card_buttons(idx, row, qty):
     qr_key = f"qr_{idx}"
 
     if is_mobile:
-        # スマホ：メトリクスと同じ横並びHTMLボックス＋Streamlitボタン
-        st.markdown(
-            f"""<div class="sp-compact-btns" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;
-                gap:4px;margin:3px 0 2px 0;background:#f1f5f9;border:1px solid #e2e8f0;
-                border-radius:8px;padding:4px;">
-            </div>""",
-            unsafe_allow_html=True,
+        # HTMLボタン＋JavaScriptでquery_paramsを書き換えてStreamlitに通知
+        btn_style = (
+            "display:inline-block;flex:1;text-align:center;padding:5px 2px;"
+            "background:#f1f5f9;border:1px solid #cbd5e1;border-radius:7px;"
+            "font-size:13px;font-weight:600;color:#1e293b;cursor:pointer;"
+            "text-decoration:none;line-height:1.3;"
         )
-        # ボタン行1：＋0.5 ＋1 −0.5 −1
-        st.markdown('<div class="sp-compact-btns">', unsafe_allow_html=True)
-        rb1, rb2, rb3, rb4 = st.columns(4)
-        with rb1:
-            if st.button("＋0.5", key=f"plus05_{idx}", use_container_width=True):
-                before = normalize_stock(data.loc[idx,"保有数"])
-                after = min(before+0.5, MAX_STOCK)
-                data.loc[idx,"保有数"] = after
-                save_data(inventory_sheet, data)
-                append_history(history_sheet,"入庫",data.loc[idx],before,after,after-before,"SP +0.5")
-                st.rerun()
-        with rb2:
-            if st.button("＋1", key=f"plus1_{idx}", use_container_width=True):
-                before = normalize_stock(data.loc[idx,"保有数"])
-                after = min(before+1.0, MAX_STOCK)
-                data.loc[idx,"保有数"] = after
-                save_data(inventory_sheet, data)
-                append_history(history_sheet,"入庫",data.loc[idx],before,after,after-before,"SP +1")
-                st.rerun()
-        with rb3:
-            if st.button("−0.5", key=f"minus05_{idx}", use_container_width=True):
-                before = normalize_stock(data.loc[idx,"保有数"])
-                after = max(before-0.5, 0)
-                data.loc[idx,"保有数"] = after
-                save_data(inventory_sheet, data)
-                append_history(history_sheet,"出庫",data.loc[idx],before,after,after-before,"SP -0.5")
-                st.rerun()
-        with rb4:
-            if st.button("−1", key=f"minus1_{idx}", use_container_width=True):
-                before = normalize_stock(data.loc[idx,"保有数"])
-                after = max(before-1.0, 0)
-                data.loc[idx,"保有数"] = after
-                save_data(inventory_sheet, data)
-                append_history(history_sheet,"出庫",data.loc[idx],before,after,after-before,"SP -1")
-                st.rerun()
-        # ボタン行2：編集 QR 削除
-        rc1, rc2, rc3 = st.columns(3)
-        with rc1:
-            if st.button("✏️ 編集", key=f"edit_button_{idx}", use_container_width=True):
-                st.session_state[edit_key] = not st.session_state.get(edit_key, False)
-                st.rerun()
-        with rc2:
-            if st.button("📷 QR", key=f"qr_button_{idx}", use_container_width=True):
-                st.session_state[qr_key] = not st.session_state.get(qr_key, False)
-                st.rerun()
-        with rc3:
-            if st.button("🗑️ 削除", key=f"delete_{idx}", use_container_width=True):
-                st.session_state[pending_key] = True
-                st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
+        btn_red = (
+            "display:inline-block;flex:1;text-align:center;padding:5px 2px;"
+            "background:#fee2e2;border:1px solid #fca5a5;border-radius:7px;"
+            "font-size:13px;font-weight:600;color:#991b1b;cursor:pointer;"
+            "text-decoration:none;line-height:1.3;"
+        )
+        btn_gray = (
+            "display:inline-block;flex:1;text-align:center;padding:5px 2px;"
+            "background:#f8fafc;border:1px solid #e2e8f0;border-radius:7px;"
+            "font-size:12px;font-weight:500;color:#475569;cursor:pointer;"
+            "text-decoration:none;line-height:1.3;"
+        )
+        base_url = "?"
+        def btn_url(action):
+            return f"?sp_action={action}&sp_idx={idx}"
+
+        st.markdown(f"""
+<div style="display:flex;gap:5px;margin:4px 0 2px 0;">
+  <a href="{btn_url('p05')}" style="{btn_style}">＋0.5</a>
+  <a href="{btn_url('p1')}"  style="{btn_style}">＋1</a>
+  <a href="{btn_url('m05')}" style="{btn_red}">−0.5</a>
+  <a href="{btn_url('m1')}"  style="{btn_red}">−1</a>
+</div>
+<div style="display:flex;gap:5px;margin:2px 0 4px 0;">
+  <a href="{btn_url('edit')}" style="{btn_gray}">✏️ 編集</a>
+  <a href="{btn_url('qr')}"   style="{btn_gray}">📷 QR</a>
+  <a href="{btn_url('del')}"  style="{btn_gray}">🗑️ 削除</a>
+</div>
+""", unsafe_allow_html=True)
     else:
         # PC：既存の5列レイアウト
         b1, b2, b3, b4, b5 = st.columns([1, 1, 1, 1, 2])
