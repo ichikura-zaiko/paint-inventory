@@ -34,7 +34,6 @@ MASTER_COLUMNS = ["名称"]
 DEFAULT_CUSTOMERS = ["自社", "東洋紡エンジニアリング", "その他"]
 DEFAULT_TYPES = ["アクリル", "メラミン", "粉体", "ウレタン", "エポキシ", "ラッカー", "その他"]
 
-# 5分艶は半艶と同じ扱いにするため不要
 GLOSS_OPTIONS = ["", "Gloss", "Semi-gloss", "Matte", "30% Gloss", "70% Gloss", "Other"]
 
 MAX_STOCK = 50.0
@@ -44,87 +43,137 @@ DEFAULT_GRAY_VALUES = {"", "#999999", "#929396"}
 
 
 # =========================
-# スマホ向けCSS
+# コンパクト向けCSS（余白削減・フォームを締める）
 # =========================
 st.markdown(
     """
     <style>
+    /* 全体の余白を削減 */
     .block-container {
-        padding-top: 1rem;
-        padding-left: 0.8rem;
-        padding-right: 0.8rem;
+        padding-top: 0.5rem !important;
+        padding-bottom: 0.5rem !important;
+        padding-left: 0.8rem !important;
+        padding-right: 0.8rem !important;
     }
+    /* セクション見出しの余白を削減 */
+    h2, h3 {
+        margin-top: 0.4rem !important;
+        margin-bottom: 0.2rem !important;
+        font-size: 1.1rem !important;
+    }
+    /* タイトルを小さく */
+    h1 {
+        font-size: 1.4rem !important;
+        margin-bottom: 0 !important;
+    }
+    /* caption の余白削減 */
+    .stCaption {
+        margin-bottom: 0.2rem !important;
+    }
+    /* st.metric を小さく */
+    [data-testid="metric-container"] {
+        padding: 4px 8px !important;
+    }
+    [data-testid="stMetricValue"] {
+        font-size: 1.4rem !important;
+    }
+    [data-testid="stMetricLabel"] {
+        font-size: 0.75rem !important;
+    }
+    /* input/select の高さを削減 */
+    .stTextInput input,
+    .stNumberInput input,
+    .stSelectbox div[data-baseweb="select"] {
+        padding-top: 4px !important;
+        padding-bottom: 4px !important;
+        min-height: 36px !important;
+    }
+    /* ボタンをコンパクトに */
+    .stButton > button {
+        padding: 4px 10px !important;
+        min-height: 34px !important;
+        font-size: 0.85rem !important;
+    }
+    /* divider の余白削減 */
+    hr {
+        margin-top: 0.4rem !important;
+        margin-bottom: 0.4rem !important;
+    }
+    /* フォームラベルのサイズ削減 */
+    .stSelectbox label,
+    .stTextInput label,
+    .stNumberInput label,
+    .stDateInput label,
+    .stColorPicker label {
+        font-size: 0.8rem !important;
+        margin-bottom: 1px !important;
+    }
+    /* カードのコンパクト化 */
     .paint-card {
         background-color:#dbeafe;
-        padding:14px;
-        border-radius:12px;
-        margin-bottom:12px;
+        padding:8px 10px;
+        border-radius:10px;
+        margin-bottom:6px;
         border:1px solid #ccc;
     }
     .paint-card-inner {
         display:flex;
         align-items:center;
-        gap:14px;
+        gap:10px;
         flex-wrap:wrap;
     }
     .paint-chip {
-        width:58px;
-        height:58px;
+        width:46px;
+        height:46px;
         border:1px solid #555;
-        border-radius:8px;
+        border-radius:6px;
         flex: 0 0 auto;
     }
     .paint-info {
         flex:1;
-        min-width:220px;
+        min-width:180px;
     }
     .paint-no-name {
-        font-size:22px;
+        font-size:16px;
         font-weight:600;
+        line-height:1.3;
     }
     .paint-stock {
-        font-size:28px;
+        font-size:20px;
         letter-spacing:1px;
         white-space:nowrap;
     }
     .badge {
         display:inline-block;
-        font-size:13px;
+        font-size:11px;
         color:#374151;
         background:#f3f4f6;
         border:1px solid #d1d5db;
         border-radius:999px;
-        padding:2px 8px;
-        margin-top:4px;
-        margin-right:4px;
-        margin-bottom:4px;
+        padding:1px 6px;
+        margin-top:2px;
+        margin-right:3px;
+        margin-bottom:2px;
     }
     .small-color-row {
         display:flex;
         align-items:center;
-        gap:8px;
-        margin-bottom:8px;
+        gap:6px;
+        margin-bottom:5px;
     }
     .small-color-chip {
-        width:28px;
-        height:28px;
+        width:22px;
+        height:22px;
         border:1px solid #555;
         flex: 0 0 auto;
     }
     @media (max-width: 768px) {
         .stButton > button {
             width: 100%;
-            min-height: 42px;
         }
         div[data-testid="column"] {
             width: 100% !important;
             flex: 1 1 100% !important;
-        }
-        .paint-no-name {
-            font-size:20px;
-        }
-        .paint-stock {
-            font-size:24px;
         }
     }
     </style>
@@ -176,7 +225,6 @@ def normalize_stock(value):
 
 
 def shelf_life_days(paint_type):
-    # 粉体は1年以上。それ以外は60日目安。
     return 365 if "粉体" in str(paint_type) else 60
 
 
@@ -198,11 +246,9 @@ def expiry_info(received_date, paint_type):
 
 
 def can_display(qty):
-    """テキスト用の簡易表示。data_editorなどHTMLが使えない場所用。"""
     qty = normalize_stock(qty)
     full = int(qty)
     half = (qty - full) >= 0.5
-
     display = ""
     for i in range(5):
         if i < min(full, 5):
@@ -211,15 +257,12 @@ def can_display(qty):
             display += "◩"
         else:
             display += "□"
-
     if qty > 5:
         display += f" +{qty - 5:g}"
-
     return display
 
 
 def can_display_html(qty, hex_color):
-    """実際の塗料色で、1マス=1缶として横並び表示する。"""
     qty = normalize_stock(qty)
     color = normalize_hex(hex_color)
     full = int(qty)
@@ -235,12 +278,12 @@ def can_display_html(qty, hex_color):
             bg = "#ffffff"
 
         boxes.append(
-            f"<span style='display:inline-block;width:28px;height:28px;margin-right:5px;"
-            f"border:1px solid #777;border-radius:5px;background:{bg};"
+            f"<span style='display:inline-block;width:22px;height:22px;margin-right:3px;"
+            f"border:1px solid #777;border-radius:4px;background:{bg};"
             f"vertical-align:middle;box-sizing:border-box;'></span>"
         )
 
-    extra = f"<span style='font-size:18px;margin-left:4px;vertical-align:middle;'>+{qty - 5:g}</span>" if qty > 5 else ""
+    extra = f"<span style='font-size:14px;margin-left:3px;vertical-align:middle;'>+{qty - 5:g}</span>" if qty > 5 else ""
     return f"<span style='display:inline-flex;align-items:center;gap:0;white-space:nowrap;'>{''.join(boxes)}{extra}</span>"
 
 
@@ -479,30 +522,13 @@ def add_or_update_data(data, customer, paint_type, number_clean, name, hex_color
 
     if number_clean in data["検索No"].values:
         data.loc[data["検索No"] == number_clean, COLUMNS] = [
-            customer,
-            paint_type,
-            number_clean,
-            name,
-            hex_color,
-            gloss,
-            stock,
-            received_date,
-            location,
+            customer, paint_type, number_clean, name, hex_color, gloss, stock, received_date, location,
         ]
     else:
-        new_row = pd.DataFrame([
-            {
-                "得意先": customer,
-                "種類": paint_type,
-                "No": number_clean,
-                "名称": name,
-                "HEX": hex_color,
-                "艶": gloss,
-                "保有数": stock,
-                "入荷日": received_date,
-                "保管場所": location,
-            }
-        ])
+        new_row = pd.DataFrame([{
+            "得意先": customer, "種類": paint_type, "No": number_clean, "名称": name,
+            "HEX": hex_color, "艶": gloss, "保有数": stock, "入荷日": received_date, "保管場所": location,
+        }])
         data = pd.concat([data.drop(columns=["検索No"], errors="ignore"), new_row], ignore_index=True)
 
     return data.drop(columns=["検索No"], errors="ignore")
@@ -524,64 +550,70 @@ except Exception as e:
 
 
 # =========================
-# 上部操作
+# 上部操作（1行にまとめてコンパクト化）
 # =========================
-top1, top2, top3 = st.columns([1, 1, 1])
+top1, top2, top3, top4 = st.columns([1, 1, 1.5, 1.5])
 with top1:
     st.metric("登録件数 / Items", len(data))
 with top2:
     st.metric("総保有数 / Total Stock", f"{data['保有数'].sum():g}")
 with top3:
-    if st.button("🔄 在庫を再読み込み / Reload Stock", use_container_width=True):
+    if st.button("🔄 在庫再読み込み / Reload", use_container_width=True):
         load_color_master.clear()
         st.rerun()
-
-if st.button("⚙️ マスタ再読み込み / Reload Masters", use_container_width=True):
-    load_master_by_sheet_name.clear()
-    st.rerun()
+with top4:
+    if st.button("⚙️ マスタ再読み込み / Masters", use_container_width=True):
+        load_master_by_sheet_name.clear()
+        st.rerun()
 
 gray_rows = data[data["HEX"].astype(str).str.upper().isin(DEFAULT_GRAY_VALUES)].copy()
 if len(gray_rows) > 0:
-    with st.expander("⚠️ 色がグレー表示になっているデータ / Gray Color Data"):
-        st.write("HEXが空欄・仮グレー、または nittoko_colors.csv で色が見つからない可能性があります。")
+    with st.expander(f"⚠️ 色がグレーのデータ / Gray Color Data ({len(gray_rows)}件)"):
         st.dataframe(gray_rows[["No", "名称", "HEX", "保有数", "保管場所"]], use_container_width=True)
 
 st.divider()
 
 
 # =========================
-# 在庫入力
+# 在庫入力（4列レイアウトでコンパクト化）
 # =========================
 st.subheader("在庫入力 / Add or Update Stock")
 
-col1, col2, col3 = st.columns(3)
-
-with col1:
+# 1行目：得意先・種類・No・名称
+r1c1, r1c2, r1c3, r1c4 = st.columns([1.2, 1.2, 1, 1.5])
+with r1c1:
     customer = st.selectbox("得意先 / Customer", customers)
+with r1c2:
     paint_type = st.selectbox("種類 / Type", types)
-
-with col2:
-    number = st.text_input("No / 色番号 / Color No.")
+with r1c3:
+    number = st.text_input("No / 色番号")
     number_clean = clean_code(number)
+with r1c4:
     name_input = st.text_input("名称 / Name")
 
 auto_name, auto_hex, found_color = color_lookup(number_clean, color_df)
 
 if number_clean:
     if found_color:
-        st.success(f"{number_clean} の色を自動表示しました / Color found")
+        st.success(f"✅ {number_clean} の色を自動表示しました", icon=None)
     else:
-        st.warning(f"{number_clean} は nittoko_colors.csv にありません / Not found in color master")
+        st.warning(f"⚠️ {number_clean} は色マスタにありません")
 
 name = name_input if name_input else auto_name
 
-with col3:
+# 2行目：色・Finish・保有数・入荷日・場所・缶表示
+r2c1, r2c2, r2c3, r2c4, r2c5 = st.columns([0.7, 1, 0.8, 1, 1.5])
+with r2c1:
     hex_color = st.color_picker("色 / Color", auto_hex)
+with r2c2:
     gloss = st.selectbox("Finish", GLOSS_OPTIONS)
+with r2c3:
     stock = st.number_input("保有数 / Stock", min_value=0.0, max_value=MAX_STOCK, step=STEP)
-    received_date = st.date_input("入荷日 / Received Date", value=datetime.now().date())
-    location = st.text_input("保管場所 / Location", placeholder="例: A-1, 塗料庫右-3")
-    st.markdown(f"<div>{can_display_html(stock, hex_color)}</div>", unsafe_allow_html=True)
+with r2c4:
+    received_date = st.date_input("入荷日 / Received", value=datetime.now().date())
+with r2c5:
+    location = st.text_input("保管場所 / Location", placeholder="例: A-1")
+    st.markdown(f"<div style='margin-top:2px;'>{can_display_html(stock, hex_color)}</div>", unsafe_allow_html=True)
 
 if st.button("追加 / 更新して保存 / Add or Update", type="primary", use_container_width=True):
     if number_clean == "":
@@ -593,16 +625,8 @@ if st.button("追加 / 更新して保存 / Add or Update", type="primary", use_
             before_qty = data.loc[existing_mask, "保有数"].iloc[0]
 
         data = add_or_update_data(
-            data,
-            customer,
-            paint_type,
-            number_clean,
-            name,
-            hex_color,
-            gloss,
-            stock,
-            received_date.strftime("%Y-%m-%d"),
-            location,
+            data, customer, paint_type, number_clean, name, hex_color, gloss,
+            stock, received_date.strftime("%Y-%m-%d"), location,
         )
         save_data(inventory_sheet, data)
 
@@ -618,18 +642,18 @@ st.divider()
 
 
 # =========================
-# 検索・並び替え
+# 検索・並び替え（横並びでコンパクト化）
 # =========================
 st.subheader("検索・並び替え / Search and Sort")
 
-c1, c2 = st.columns([2, 1])
-
-with c1:
-    search = st.text_input("色番号・名称・得意先・種類・場所で検索 / Search by No., Name, Customer, Type, Location")
+sc1, sc2, sc3, sc4 = st.columns([2, 1, 1, 1])
+with sc1:
+    search = st.text_input("🔍 番号・名称・得意先・種類・場所", placeholder="Search...")
+with sc2:
     gloss_filter = st.selectbox("Finish Filter", ["All"] + GLOSS_OPTIONS)
-    location_filter = st.text_input("場所フィルター / Location Filter", placeholder="例: A-1, 右-3")
-
-with c2:
+with sc3:
+    location_filter = st.text_input("📍 場所フィルター", placeholder="例: A-1")
+with sc4:
     sort_mode = st.selectbox("並び替え / Sort", ["色番号順", "保有数順", "得意先順", "種類順", "場所順", "入荷日順"])
 
 owned = data[data["保有数"] > 0].copy()
@@ -689,13 +713,13 @@ with left:
                     <div class="paint-card-inner">
                         <div class="paint-chip" style="background-color:{display_hex};"></div>
                         <div class="paint-info">
-                            <b>{row['得意先']} / {row['種類']}</b><br>
+                            <span style="font-size:11px;color:#6b7280;">{row['得意先']} / {row['種類']}</span><br>
                             <span class="paint-no-name">{row['No']}　{row['名称']}</span><br>
                             <span class="badge">{gloss_text}</span>
-                            <span class="badge" style="color:{expiry_color};">Received: {row.get('入荷日', '')} ｜ {expiry_text}</span>
+                            <span class="badge" style="color:{expiry_color};">📅 {row.get('入荷日', '')} ｜ {expiry_text}</span>
                             <span class="badge">📍 {location_text}</span><br>
                             <span>{can_display_html(qty, display_hex)}</span>
-                            <span style="font-size:18px; margin-left:10px; vertical-align:middle;">{qty:g} {unit_label(qty)}</span>
+                            <span style="font-size:15px; margin-left:8px; vertical-align:middle;">{qty:g} {unit_label(qty)}</span>
                         </div>
                     </div>
                 </div>
@@ -706,7 +730,7 @@ with left:
             b1, b2, b3 = st.columns([1, 1, 2])
 
             with b1:
-                if st.button("＋0.5 / Add", key=f"plus_{idx}", use_container_width=True):
+                if st.button("＋0.5", key=f"plus_{idx}", use_container_width=True):
                     before_qty = normalize_stock(data.loc[idx, "保有数"])
                     after_qty = min(before_qty + STEP, MAX_STOCK)
                     data.loc[idx, "保有数"] = after_qty
@@ -715,7 +739,7 @@ with left:
                     st.rerun()
 
             with b2:
-                if st.button("−0.5 / Use", key=f"minus_{idx}", use_container_width=True):
+                if st.button("−0.5", key=f"minus_{idx}", use_container_width=True):
                     before_qty = normalize_stock(data.loc[idx, "保有数"])
                     after_qty = max(before_qty - STEP, 0)
                     data.loc[idx, "保有数"] = after_qty
@@ -734,62 +758,55 @@ with left:
                         st.rerun()
 
                 with e2:
-                    if st.button(f"削除 / Delete {row['No']}", key=f"delete_{idx}", use_container_width=True):
+                    if st.button(f"削除 {row['No']}", key=f"delete_{idx}", use_container_width=True):
                         st.session_state[pending_key] = True
                         st.rerun()
 
                 if st.session_state.get(edit_key):
                     with st.form(f"edit_form_{idx}"):
                         st.write(f"**{row['No']} を編集 / Edit**")
-                        ec1, ec2 = st.columns(2)
+                        ec1, ec2, ec3 = st.columns(3)
 
                         with ec1:
                             edit_customer = st.selectbox(
-                                "得意先 / Customer",
-                                customers,
+                                "得意先", customers,
                                 index=customers.index(row["得意先"]) if row["得意先"] in customers else 0,
                                 key=f"edit_customer_{idx}",
                             )
                             edit_type = st.selectbox(
-                                "種類 / Type",
-                                types,
+                                "種類", types,
                                 index=types.index(row["種類"]) if row["種類"] in types else 0,
                                 key=f"edit_type_{idx}",
                             )
-                            edit_name = st.text_input("名称 / Name", value=str(row["名称"]), key=f"edit_name_{idx}")
+                            edit_name = st.text_input("名称", value=str(row["名称"]), key=f"edit_name_{idx}")
+
+                        with ec2:
                             edit_gloss = st.selectbox(
-                                "Finish",
-                                GLOSS_OPTIONS,
+                                "Finish", GLOSS_OPTIONS,
                                 index=GLOSS_OPTIONS.index(row["艶"]) if row["艶"] in GLOSS_OPTIONS else 0,
                                 key=f"edit_gloss_{idx}",
                             )
-                            edit_location = st.text_input("保管場所 / Location", value=str(row.get("保管場所", "")), key=f"edit_loc_{idx}")
+                            edit_location = st.text_input("保管場所", value=str(row.get("保管場所", "")), key=f"edit_loc_{idx}")
+                            edit_hex = st.color_picker("色", normalize_hex(row["HEX"]), key=f"edit_hex_{idx}")
 
-                        with ec2:
-                            edit_hex = st.color_picker("色 / Color", normalize_hex(row["HEX"]), key=f"edit_hex_{idx}")
+                        with ec3:
                             edit_qty = st.number_input(
-                                "保有数 / Stock",
-                                min_value=0.0,
-                                max_value=MAX_STOCK,
-                                step=STEP,
-                                value=normalize_stock(row["保有数"]),
-                                key=f"edit_qty_{idx}",
+                                "保有数", min_value=0.0, max_value=MAX_STOCK, step=STEP,
+                                value=normalize_stock(row["保有数"]), key=f"edit_qty_{idx}",
                             )
                             try:
                                 default_received = pd.to_datetime(row.get("入荷日", today_str())).date()
                             except Exception:
                                 default_received = datetime.now().date()
                             edit_received_date = st.date_input(
-                                "入荷日 / Received Date",
-                                value=default_received,
-                                key=f"edit_received_{idx}",
+                                "入荷日", value=default_received, key=f"edit_received_{idx}",
                             )
                             st.markdown(f"<div>{can_display_html(edit_qty, edit_hex)}</div>", unsafe_allow_html=True)
 
                         memo = st.text_input("メモ / Memo", value="保有リストから編集", key=f"edit_memo_{idx}")
                         s1, s2 = st.columns(2)
                         with s1:
-                            submitted = st.form_submit_button("変更を保存 / Save Changes", use_container_width=True)
+                            submitted = st.form_submit_button("変更を保存 / Save", use_container_width=True)
                         with s2:
                             cancelled = st.form_submit_button("キャンセル / Cancel", use_container_width=True)
 
@@ -805,13 +822,8 @@ with left:
                             data.loc[idx, "保管場所"] = edit_location
                             save_data(inventory_sheet, data)
                             append_history(
-                                history_sheet,
-                                "編集",
-                                data.loc[idx],
-                                before_qty,
-                                edit_qty,
-                                normalize_stock(edit_qty) - before_qty,
-                                memo,
+                                history_sheet, "編集", data.loc[idx],
+                                before_qty, edit_qty, normalize_stock(edit_qty) - before_qty, memo,
                             )
                             st.session_state.pop(edit_key, None)
                             st.success("変更しました / Updated")
@@ -845,7 +857,7 @@ with left:
 # 保有カラー一覧
 # =========================
 with right:
-    st.subheader("保有カラー一覧 / Color Summary")
+    st.subheader("カラー一覧 / Colors")
 
     if len(owned) == 0:
         st.info("保有カラーなし / No colors in stock.")
@@ -858,7 +870,8 @@ with right:
                 f"""
                 <div class="small-color-row">
                     <div class="small-color-chip" style="background-color:{display_hex};"></div>
-                    <div>{row['No']}　{row['名称']}　{qty:g} {unit_label(qty)}<br><small>📍 {row.get('保管場所', '')}</small></div>
+                    <div style="font-size:12px;">{row['No']}　{row['名称']}　<b>{qty:g}</b> {unit_label(qty)}<br>
+                    <span style="color:#6b7280;font-size:11px;">📍 {row.get('保管場所', '')}</span></div>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -875,7 +888,7 @@ st.divider()
 # 直接テーブル編集
 # =========================
 st.subheader("直接テーブル編集 / Direct Table Edit")
-st.caption("ここで編集して保存すると、Googleスプレッドシートに反映されます。 / Edits here are saved to Google Sheets.")
+st.caption("ここで編集して保存すると、Googleスプレッドシートに反映されます。")
 
 editor_data = data.copy()
 editor_data["入荷日"] = pd.to_datetime(editor_data["入荷日"], errors="coerce").dt.date
@@ -900,13 +913,9 @@ if st.button("テーブル編集を保存 / Save Table Edits", use_container_wid
     edited_data["入荷日"] = edited_data["入荷日"].apply(lambda x: x.strftime("%Y-%m-%d") if hasattr(x, "strftime") else str(x))
     save_data(inventory_sheet, edited_data)
     append_history(
-        history_sheet,
-        "テーブル編集",
+        history_sheet, "テーブル編集",
         {"得意先": "", "種類": "", "No": "一括", "名称": "直接テーブル編集"},
-        "",
-        "",
-        "",
-        "直接テーブル編集で保存",
+        "", "", "", "直接テーブル編集で保存",
     )
     st.success("Googleスプレッドシートに保存しました / Saved to Google Sheets.")
     st.rerun()
@@ -939,9 +948,6 @@ st.divider()
 # =========================
 with st.expander("⚙️ 得意先マスタ・種類マスタの使い方 / How to Use Master Sheets"):
     st.write("同じGoogleスプレッドシート内に以下のシートを作成・使用します。")
-    st.write("- 在庫")
-    st.write("- 履歴")
-    st.write("- 得意先マスタ")
-    st.write("- 種類マスタ")
+    st.write("- 在庫 / 履歴 / 得意先マスタ / 種類マスタ")
     st.write("得意先マスタ・種類マスタは、A列の見出しを `名称` にして、その下に選択肢を入力してください。")
     st.write("在庫シートは、必要な列が無い場合でもアプリ側で空欄として扱います。保存時に列が整います。")
