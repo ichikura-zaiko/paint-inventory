@@ -887,8 +887,11 @@ st.divider()
 st.subheader("直接テーブル編集 / Direct Table Edit")
 st.caption("ここで編集して保存すると、Googleスプレッドシートに反映されます。 / Edits here are saved to Google Sheets.")
 
+editor_data = data.copy()
+editor_data["入荷日"] = pd.to_datetime(editor_data["入荷日"], errors="coerce").dt.date
+
 edited_data = st.data_editor(
-    data,
+    editor_data,
     use_container_width=True,
     num_rows="dynamic",
     column_config={
@@ -902,6 +905,8 @@ edited_data = st.data_editor(
 )
 
 if st.button("テーブル編集を保存 / Save Table Edits", use_container_width=True):
+    edited_data = edited_data.copy()
+    edited_data["入荷日"] = edited_data["入荷日"].apply(lambda x: x.strftime("%Y-%m-%d") if hasattr(x, "strftime") else str(x))
     save_data(inventory_sheet, edited_data)
     append_history(
         history_sheet,
