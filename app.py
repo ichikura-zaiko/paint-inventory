@@ -11,8 +11,19 @@ from datetime import datetime, timedelta
 # =========================
 # 画面設定
 # =========================
-st.set_page_config(page_title="塗料在庫管理", page_icon="🎨", layout="wide")
-st.title("🎨 塗料在庫管理 / Paint Inventory")
+st.set_page_config(page_title="一倉 塗料管理システム", page_icon="🎨", layout="wide")
+st.markdown(
+    """
+    <div style="background:linear-gradient(90deg,#1e3a5f,#2e6da4);padding:10px 18px;border-radius:10px;margin-bottom:6px;display:flex;align-items:center;gap:12px;">
+        <span style="font-size:2rem;">🎨</span>
+        <div>
+            <div style="color:#ffffff;font-size:1.5rem;font-weight:700;letter-spacing:2px;">一倉　塗料管理システム</div>
+            <div style="color:#a8c8e8;font-size:0.8rem;">Ichikura Paint Inventory Management System</div>
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 st.caption("Googleスプレッドシート直結・キャッシュなし / Connected to Google Sheets, no inventory cache")
 
 
@@ -34,7 +45,7 @@ MASTER_COLUMNS = ["名称"]
 DEFAULT_CUSTOMERS = ["自社", "東洋紡エンジニアリング", "その他"]
 DEFAULT_TYPES = ["アクリル", "メラミン", "粉体", "ウレタン", "エポキシ", "ラッカー", "その他"]
 
-GLOSS_OPTIONS = ["", "Gloss", "Semi-gloss", "Matte", "30% Gloss", "70% Gloss", "Other"]
+GLOSS_OPTIONS = ["", "Gloss／艶あり", "Semi-gloss／半艶", "Matte／艶なし", "30% Gloss／３分艶", "70% Gloss／７分艶", "Other／その他"]
 
 MAX_STOCK = 50.0
 STEP = 0.5
@@ -225,7 +236,7 @@ def normalize_stock(value):
 
 
 def shelf_life_days(paint_type):
-    return 365 if "粉体" in str(paint_type) else 60
+    return 365 if "粉体" in str(paint_type) else 180
 
 
 def expiry_info(received_date, paint_type):
@@ -606,7 +617,7 @@ r2c1, r2c2, r2c3, r2c4, r2c5 = st.columns([0.7, 1, 0.8, 1, 1.5])
 with r2c1:
     hex_color = st.color_picker("色 / Color", auto_hex)
 with r2c2:
-    gloss = st.selectbox("Finish", GLOSS_OPTIONS)
+    gloss = st.selectbox("艶 / Finish", GLOSS_OPTIONS)
 with r2c3:
     stock = st.number_input("保有数 / Stock", min_value=0.0, max_value=MAX_STOCK, step=STEP)
 with r2c4:
@@ -650,7 +661,7 @@ sc1, sc2, sc3, sc4 = st.columns([2, 1, 1, 1])
 with sc1:
     search = st.text_input("🔍 番号・名称・得意先・種類・場所", placeholder="Search...")
 with sc2:
-    gloss_filter = st.selectbox("Finish Filter", ["All"] + GLOSS_OPTIONS)
+    gloss_filter = st.selectbox("艶 / Finish Filter", ["All／すべて"] + GLOSS_OPTIONS)
 with sc3:
     location_filter = st.text_input("📍 場所フィルター", placeholder="例: A-1")
 with sc4:
@@ -668,7 +679,7 @@ if search:
         | owned["保管場所"].astype(str).apply(clean_code).str.contains(s, na=False)
     ]
 
-if gloss_filter != "All":
+if gloss_filter != "All／すべて":
     owned = owned[owned["艶"] == gloss_filter]
 
 if location_filter:
@@ -800,7 +811,7 @@ with left:
 
                         with ec2:
                             edit_gloss = st.selectbox(
-                                "Finish", GLOSS_OPTIONS,
+                                "艶 / Finish", GLOSS_OPTIONS,
                                 index=GLOSS_OPTIONS.index(row["艶"]) if row["艶"] in GLOSS_OPTIONS else 0,
                                 key=f"edit_gloss_{idx}",
                             )
@@ -919,7 +930,7 @@ edited_data = st.data_editor(
         "得意先": st.column_config.SelectboxColumn("得意先 / Customer", options=customers),
         "種類": st.column_config.SelectboxColumn("種類 / Type", options=types),
         "HEX": st.column_config.TextColumn("HEX / Color Code"),
-        "艶": st.column_config.SelectboxColumn("Finish", options=GLOSS_OPTIONS),
+        "艶": st.column_config.SelectboxColumn("艶 / Finish", options=GLOSS_OPTIONS),
         "保有数": st.column_config.NumberColumn("保有数 / Stock", min_value=0.0, max_value=MAX_STOCK, step=STEP),
         "入荷日": st.column_config.DateColumn("入荷日 / Received Date"),
         "保管場所": st.column_config.TextColumn("保管場所 / Location"),
