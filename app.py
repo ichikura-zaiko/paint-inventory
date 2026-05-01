@@ -331,8 +331,11 @@ def load_data(sheet, color_df):
     df["名称"] = df["名称"].astype(str)
     df["保有数"] = df["保有数"].apply(normalize_stock)
 
-    # スプレッドシートから読んだHEXを優先。
-    # 空欄・不正なHEXの場合だけ、日塗工CSVから自動補完する。
+    # HEXを自動補完する。
+    # 1. シートのHEXが正しい場合はそれを優先
+    # 2. 空欄・不正な場合は nittoko_colors.csv から取得
+    # 3. 名称が空欄の場合も nittoko_colors.csv から補完
+    changed = False
     fixed_hex_list = []
     fixed_name_list = []
 
@@ -345,17 +348,26 @@ def load_data(sheet, color_df):
             fixed_hex = raw_hex.upper()
         else:
             fixed_hex = auto_hex
+            if fixed_hex != raw_hex:
+                changed = True
 
         if raw_name:
             fixed_name = raw_name
         else:
             fixed_name = auto_name
+            if fixed_name != raw_name:
+                changed = True
 
         fixed_hex_list.append(fixed_hex)
         fixed_name_list.append(fixed_name)
 
     df["HEX"] = fixed_hex_list
     df["名称"] = fixed_name_list
+
+    # シート側のHEX/名称も自動で埋め戻す。
+    # これにより、スプレッドシートにNoだけ入力しても次回読み込み時にHEXが入る。
+    if changed:
+        save_data(sheet, df)
 
     return df
 
