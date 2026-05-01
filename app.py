@@ -72,138 +72,86 @@ is_mobile = st.session_state["mobile_mode"]
 
 
 # =========================
-# コンパクト向けCSS（余白削減・フォームを締める）
+# CSS
 # =========================
 st.markdown(
     """
     <style>
-    /* 全体の余白を削減 */
     .block-container {
-        padding-top: 0.5rem !important;
-        padding-bottom: 0.5rem !important;
-        padding-left: 0.8rem !important;
-        padding-right: 0.8rem !important;
+        padding-top: 0.4rem !important;
+        padding-bottom: 0.4rem !important;
+        padding-left: 0.6rem !important;
+        padding-right: 0.6rem !important;
     }
-    /* セクション見出しの余白を削減 */
-    h2, h3 {
-        margin-top: 0.4rem !important;
-        margin-bottom: 0.2rem !important;
-        font-size: 1.1rem !important;
-    }
-    /* タイトルを小さく */
-    h1 {
-        font-size: 1.4rem !important;
-        margin-bottom: 0 !important;
-    }
-    /* caption の余白削減 */
-    .stCaption {
-        margin-bottom: 0.2rem !important;
-    }
-    /* st.metric を小さく */
-    [data-testid="metric-container"] {
-        padding: 4px 8px !important;
-    }
-    [data-testid="stMetricValue"] {
-        font-size: 1.4rem !important;
-    }
-    [data-testid="stMetricLabel"] {
-        font-size: 0.75rem !important;
-    }
-    /* input/select の高さを削減 */
-    .stTextInput input,
-    .stNumberInput input,
+    h2, h3 { margin-top: 0.3rem !important; margin-bottom: 0.2rem !important; font-size: 1.05rem !important; }
+    h1 { font-size: 1.3rem !important; margin-bottom: 0 !important; }
+    .stCaption { margin-bottom: 0.1rem !important; }
+    [data-testid="metric-container"] { padding: 3px 6px !important; }
+    [data-testid="stMetricValue"] { font-size: 1.3rem !important; }
+    [data-testid="stMetricLabel"] { font-size: 0.7rem !important; }
+    .stTextInput input, .stNumberInput input,
     .stSelectbox div[data-baseweb="select"] {
-        padding-top: 4px !important;
-        padding-bottom: 4px !important;
-        min-height: 36px !important;
+        padding-top: 4px !important; padding-bottom: 4px !important; min-height: 36px !important;
     }
-    /* ボタンをコンパクトに */
     .stButton > button {
-        padding: 4px 10px !important;
-        min-height: 34px !important;
-        font-size: 0.85rem !important;
+        padding: 4px 10px !important; min-height: 34px !important; font-size: 0.85rem !important;
     }
-    /* divider の余白削減 */
-    hr {
-        margin-top: 0.4rem !important;
-        margin-bottom: 0.4rem !important;
+    hr { margin-top: 0.3rem !important; margin-bottom: 0.3rem !important; }
+    .stSelectbox label, .stTextInput label, .stNumberInput label,
+    .stDateInput label, .stColorPicker label {
+        font-size: 0.78rem !important; margin-bottom: 1px !important;
     }
-    /* フォームラベルのサイズ削減 */
-    .stSelectbox label,
-    .stTextInput label,
-    .stNumberInput label,
-    .stDateInput label,
-    .stColorPicker label {
-        font-size: 0.8rem !important;
-        margin-bottom: 1px !important;
-    }
-    /* カードのコンパクト化 */
+    /* PCカード */
     .paint-card {
-        background-color:#dbeafe;
-        padding:8px 10px;
-        border-radius:10px;
-        margin-bottom:6px;
-        border:1px solid #ccc;
+        background-color:#dbeafe; padding:8px 10px;
+        border-radius:10px; margin-bottom:6px; border:1px solid #ccc;
     }
-    .paint-card-inner {
-        display:flex;
-        align-items:center;
-        gap:10px;
-        flex-wrap:wrap;
-    }
-    .paint-chip {
-        width:46px;
-        height:46px;
-        border:1px solid #555;
-        border-radius:6px;
-        flex: 0 0 auto;
-    }
-    .paint-info {
-        flex:1;
-        min-width:180px;
-    }
-    .paint-no-name {
-        font-size:16px;
-        font-weight:600;
-        line-height:1.3;
-    }
-    .paint-stock {
-        font-size:20px;
-        letter-spacing:1px;
-        white-space:nowrap;
-    }
+    .paint-card-inner { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .paint-chip { width:46px; height:46px; border:1px solid #555; border-radius:6px; flex:0 0 auto; }
+    .paint-info { flex:1; min-width:180px; }
+    .paint-no-name { font-size:16px; font-weight:600; line-height:1.3; }
     .badge {
-        display:inline-block;
-        font-size:11px;
-        color:#374151;
-        background:#f3f4f6;
-        border:1px solid #d1d5db;
-        border-radius:999px;
-        padding:1px 6px;
-        margin-top:2px;
-        margin-right:3px;
-        margin-bottom:2px;
+        display:inline-block; font-size:11px; color:#374151;
+        background:#f3f4f6; border:1px solid #d1d5db; border-radius:999px;
+        padding:1px 6px; margin-top:2px; margin-right:3px; margin-bottom:2px;
     }
-    .small-color-row {
-        display:flex;
-        align-items:center;
-        gap:6px;
-        margin-bottom:5px;
+    .order-badge {
+        display:inline-block; font-size:11px; color:#ffffff; border-radius:999px;
+        padding:2px 8px; margin-top:2px; margin-right:3px; font-weight:600;
     }
-    .small-color-chip {
-        width:22px;
-        height:22px;
-        border:1px solid #555;
-        flex: 0 0 auto;
+    .small-color-row { display:flex; align-items:center; gap:6px; margin-bottom:5px; }
+    .small-color-chip { width:22px; height:22px; border:1px solid #555; flex:0 0 auto; }
+    /* スマホカード */
+    .sp-card {
+        background:#fff; border:1px solid #cbd5e1; border-radius:14px;
+        padding:12px 14px; margin-bottom:10px;
+        box-shadow:0 1px 4px rgba(0,0,0,0.08);
     }
-    @media (max-width: 768px) {
-        .stButton > button {
-            width: 100%;
-        }
-        div[data-testid="column"] {
-            width: 100% !important;
-            flex: 1 1 100% !important;
-        }
+    .sp-card-header {
+        display:flex; align-items:center; gap:12px; margin-bottom:6px;
+    }
+    .sp-chip {
+        width:54px; height:54px; border-radius:10px;
+        border:2px solid #94a3b8; flex:0 0 auto;
+    }
+    .sp-title { font-size:19px; font-weight:700; line-height:1.2; }
+    .sp-sub { font-size:12px; color:#64748b; margin-top:2px; }
+    .sp-qty {
+        font-size:22px; font-weight:700; color:#1e3a5f;
+        margin:6px 0 4px 0;
+    }
+    .sp-badge {
+        display:inline-block; font-size:12px; background:#f1f5f9;
+        border:1px solid #cbd5e1; border-radius:999px;
+        padding:2px 8px; margin-right:4px; margin-bottom:4px; color:#334155;
+    }
+    .sp-btn-row {
+        display:grid; grid-template-columns:1fr 1fr 1fr 1fr;
+        gap:6px; margin-top:8px;
+    }
+    .sp-btn-row2 {
+        display:grid; grid-template-columns:1fr 1fr 1fr;
+        gap:6px; margin-top:6px;
     }
     </style>
     """,
@@ -592,25 +540,44 @@ except Exception as e:
 
 
 # =========================
-# 上部操作（1行にまとめてコンパクト化）
+# 上部操作
 # =========================
-top1, top2, top3, top4, top5 = st.columns([1, 1, 1, 1, 1])
-with top1:
-    st.metric("登録件数 / Items", len(data))
-with top2:
-    st.metric("総保有数 / Total Stock", f"{data['保有数'].sum():g}")
-with top3:
-    order_count = len(data[data["発注状況"].astype(str).str.strip().isin(["発注予定", "発注済み", "納品待ち"])])
-    st.metric("発注中 / Ordering", order_count)
-with top4:
-    if st.button("🔄 再読み込み", use_container_width=True):
-        load_color_master.clear()
-        st.rerun()
-with top5:
-    mobile_label = "💻 PCモード" if is_mobile else "📱 スマホモード"
-    if st.button(mobile_label, use_container_width=True):
-        st.session_state["mobile_mode"] = not is_mobile
-        st.rerun()
+order_count = len(data[data["発注状況"].astype(str).str.strip().isin(["発注予定", "発注済み", "納品待ち"])])
+
+if is_mobile:
+    # スマホ：看板を小さく・ボタンを大きく1行に
+    m1, m2, m3 = st.columns(3)
+    with m1:
+        st.metric("登録件数", len(data))
+    with m2:
+        st.metric("総保有数", f"{data['保有数'].sum():g}")
+    with m3:
+        st.metric("発注中", order_count)
+    mb1, mb2 = st.columns(2)
+    with mb1:
+        if st.button("🔄 再読み込み", use_container_width=True):
+            load_color_master.clear()
+            st.rerun()
+    with mb2:
+        if st.button("💻 PCモードへ", use_container_width=True):
+            st.session_state["mobile_mode"] = False
+            st.rerun()
+else:
+    top1, top2, top3, top4, top5 = st.columns([1, 1, 1, 1, 1])
+    with top1:
+        st.metric("登録件数 / Items", len(data))
+    with top2:
+        st.metric("総保有数 / Total Stock", f"{data['保有数'].sum():g}")
+    with top3:
+        st.metric("発注中 / Ordering", order_count)
+    with top4:
+        if st.button("🔄 再読み込み", use_container_width=True):
+            load_color_master.clear()
+            st.rerun()
+    with top5:
+        if st.button("📱 スマホモード", use_container_width=True):
+            st.session_state["mobile_mode"] = True
+            st.rerun()
 
 gray_rows = data[data["HEX"].astype(str).str.upper().isin(DEFAULT_GRAY_VALUES)].copy()
 if len(gray_rows) > 0:
@@ -621,47 +588,76 @@ st.divider()
 
 
 # =========================
-# 在庫入力（4列レイアウトでコンパクト化）
+# 在庫入力
 # =========================
 st.subheader("在庫入力 / Add or Update Stock")
 
-# 1行目：得意先・種類・No・名称
-r1c1, r1c2, r1c3, r1c4 = st.columns([1.2, 1.2, 1, 1.5])
-with r1c1:
-    customer = st.selectbox("得意先 / Customer", customers)
-with r1c2:
-    paint_type = st.selectbox("種類 / Type", types)
-with r1c3:
-    number = st.text_input("No / 色番号")
+if is_mobile:
+    # スマホ：完全縦積み・大きめUI
+    number = st.text_input("🔢 No / 色番号", placeholder="例: 05-40X")
     number_clean = clean_code(number)
-with r1c4:
-    name_input = st.text_input("名称 / Name")
-
-auto_name, auto_hex, found_color = color_lookup(number_clean, color_df)
-
-if number_clean:
-    if found_color:
-        st.success(f"✅ {number_clean} の色を自動表示しました", icon=None)
-    else:
-        st.warning(f"⚠️ {number_clean} は色マスタにありません")
-
-name = name_input if name_input else auto_name
-
-# 2行目：色・Finish・保有数・入荷日・場所・缶表示
-r2c1, r2c2, r2c3, r2c4, r2c5, r2c6 = st.columns([0.7, 1, 1, 0.8, 1, 1.5])
-with r2c1:
-    hex_color = st.color_picker("色 / Color", auto_hex)
-with r2c2:
-    gloss = st.selectbox("艶 / Finish", GLOSS_OPTIONS)
-with r2c3:
-    order_status_input = st.selectbox("発注状況 / Order", ORDER_OPTIONS)
-with r2c4:
-    stock = st.number_input("保有数 / Stock", min_value=0.0, max_value=MAX_STOCK, step=STEP)
-with r2c5:
-    received_date = st.date_input("入荷日 / Received", value=datetime.now().date())
-with r2c6:
-    location = st.text_input("保管場所 / Location", placeholder="例: A-1")
-    st.markdown(f"<div style='margin-top:2px;'>{can_display_html(stock, hex_color)}</div>", unsafe_allow_html=True)
+    auto_name, auto_hex, found_color = color_lookup(number_clean, color_df)
+    if number_clean:
+        if found_color:
+            st.success(f"✅ {number_clean}　{auto_name}")
+        else:
+            st.warning(f"⚠️ {number_clean} は色マスタにありません")
+    name_input = st.text_input("📝 名称 / Name", value=auto_name)
+    name = name_input if name_input else auto_name
+    fa1, fa2 = st.columns(2)
+    with fa1:
+        customer = st.selectbox("得意先", customers)
+    with fa2:
+        paint_type = st.selectbox("種類", types)
+    fb1, fb2 = st.columns(2)
+    with fb1:
+        hex_color = st.color_picker("色", auto_hex)
+        st.markdown(f"<div style='margin-top:4px;'>{can_display_html(stock if 'stock' in dir() else 0, hex_color)}</div>", unsafe_allow_html=True)
+    with fb2:
+        gloss = st.selectbox("艶 / Finish", GLOSS_OPTIONS)
+    fc1, fc2 = st.columns(2)
+    with fc1:
+        stock = st.number_input("📦 保有数", min_value=0.0, max_value=MAX_STOCK, step=STEP, value=0.0)
+    with fc2:
+        order_status_input = st.selectbox("発注状況", ORDER_OPTIONS)
+    fd1, fd2 = st.columns(2)
+    with fd1:
+        received_date = st.date_input("入荷日", value=datetime.now().date())
+    with fd2:
+        location = st.text_input("📍 保管場所", placeholder="例: A-1")
+else:
+    # PC：横並びレイアウト
+    r1c1, r1c2, r1c3, r1c4 = st.columns([1.2, 1.2, 1, 1.5])
+    with r1c1:
+        customer = st.selectbox("得意先 / Customer", customers)
+    with r1c2:
+        paint_type = st.selectbox("種類 / Type", types)
+    with r1c3:
+        number = st.text_input("No / 色番号")
+        number_clean = clean_code(number)
+    with r1c4:
+        name_input = st.text_input("名称 / Name")
+    auto_name, auto_hex, found_color = color_lookup(number_clean, color_df)
+    if number_clean:
+        if found_color:
+            st.success(f"✅ {number_clean} の色を自動表示しました", icon=None)
+        else:
+            st.warning(f"⚠️ {number_clean} は色マスタにありません")
+    name = name_input if name_input else auto_name
+    r2c1, r2c2, r2c3, r2c4, r2c5, r2c6 = st.columns([0.7, 1, 1, 0.8, 1, 1.5])
+    with r2c1:
+        hex_color = st.color_picker("色 / Color", auto_hex)
+    with r2c2:
+        gloss = st.selectbox("艶 / Finish", GLOSS_OPTIONS)
+    with r2c3:
+        order_status_input = st.selectbox("発注状況 / Order", ORDER_OPTIONS)
+    with r2c4:
+        stock = st.number_input("保有数 / Stock", min_value=0.0, max_value=MAX_STOCK, step=STEP)
+    with r2c5:
+        received_date = st.date_input("入荷日 / Received", value=datetime.now().date())
+    with r2c6:
+        location = st.text_input("保管場所 / Location", placeholder="例: A-1")
+        st.markdown(f"<div style='margin-top:2px;'>{can_display_html(stock, hex_color)}</div>", unsafe_allow_html=True)
 
 if st.button("追加 / 更新して保存 / Add or Update", type="primary", use_container_width=True):
     if number_clean == "":
@@ -690,21 +686,31 @@ st.divider()
 
 
 # =========================
-# 検索・並び替え（横並びでコンパクト化）
+# 検索・並び替え
 # =========================
-st.subheader("検索・並び替え / Search and Sort")
+st.subheader("検索 / Search")
 
-sc1, sc2, sc3, sc4, sc5 = st.columns([2, 1, 1, 1, 1])
-with sc1:
-    search = st.text_input("🔍 番号・名称・得意先・種類・場所", placeholder="Search...")
-with sc2:
-    gloss_filter = st.selectbox("艶 / Finish Filter", ["All／すべて"] + GLOSS_OPTIONS)
-with sc3:
-    order_filter = st.selectbox("発注状況", ["All／すべて"] + ORDER_OPTIONS)
-with sc4:
-    location_filter = st.text_input("📍 場所フィルター", placeholder="例: A-1")
-with sc5:
-    sort_mode = st.selectbox("並び替え / Sort", ["色番号順", "保有数順", "得意先順", "種類順", "場所順", "入荷日順"])
+if is_mobile:
+    search = st.text_input("🔍 番号・名称・場所", placeholder="Search...")
+    sf1, sf2 = st.columns(2)
+    with sf1:
+        order_filter = st.selectbox("発注状況", ["All／すべて"] + ORDER_OPTIONS)
+    with sf2:
+        sort_mode = st.selectbox("並び替え", ["色番号順", "保有数順", "場所順", "入荷日順"])
+    gloss_filter = "All／すべて"
+    location_filter = ""
+else:
+    sc1, sc2, sc3, sc4, sc5 = st.columns([2, 1, 1, 1, 1])
+    with sc1:
+        search = st.text_input("🔍 番号・名称・得意先・種類・場所", placeholder="Search...")
+    with sc2:
+        gloss_filter = st.selectbox("艶 / Finish Filter", ["All／すべて"] + GLOSS_OPTIONS)
+    with sc3:
+        order_filter = st.selectbox("発注状況", ["All／すべて"] + ORDER_OPTIONS)
+    with sc4:
+        location_filter = st.text_input("📍 場所フィルター", placeholder="例: A-1")
+    with sc5:
+        sort_mode = st.selectbox("並び替え / Sort", ["色番号順", "保有数順", "得意先順", "種類順", "場所順", "入荷日順"])
 
 owned = data[data["保有数"] > 0].copy()
 
@@ -741,264 +747,303 @@ elif sort_mode == "場所順":
 elif sort_mode == "入荷日順":
     owned = owned.sort_values("入荷日")
 
-left, right = st.columns([2, 1])
-
-
 # =========================
-# 保有リスト
+# 保有リスト（スマホ/PC分岐）
 # =========================
-with left:
-    st.subheader("保有リスト / Stock List")
+st.subheader("保有リスト / Stock List")
 
-    if len(owned) == 0:
-        st.info("該当する在庫データがありません / No matching stock data.")
+def render_card_buttons(idx, row, qty):
+    """＋−ボタン・編集・QR・削除の共通ロジック"""
+    edit_key = f"edit_{idx}"
+    pending_key = f"pending_delete_{idx}"
+    qr_key = f"qr_{idx}"
+
+    if is_mobile:
+        # スマホ：＋−を大きく2列×2行
+        ra1, ra2 = st.columns(2)
+        with ra1:
+            if st.button("＋ 0.5", key=f"plus05_{idx}", use_container_width=True):
+                before = normalize_stock(data.loc[idx,"保有数"])
+                after = min(before+0.5, MAX_STOCK)
+                data.loc[idx,"保有数"] = after
+                save_data(inventory_sheet, data)
+                append_history(history_sheet,"入庫",data.loc[idx],before,after,after-before,"SP +0.5")
+                st.rerun()
+        with ra2:
+            if st.button("＋ 1", key=f"plus1_{idx}", use_container_width=True):
+                before = normalize_stock(data.loc[idx,"保有数"])
+                after = min(before+1.0, MAX_STOCK)
+                data.loc[idx,"保有数"] = after
+                save_data(inventory_sheet, data)
+                append_history(history_sheet,"入庫",data.loc[idx],before,after,after-before,"SP +1")
+                st.rerun()
+        rb1, rb2 = st.columns(2)
+        with rb1:
+            if st.button("− 0.5", key=f"minus05_{idx}", use_container_width=True):
+                before = normalize_stock(data.loc[idx,"保有数"])
+                after = max(before-0.5, 0)
+                data.loc[idx,"保有数"] = after
+                save_data(inventory_sheet, data)
+                append_history(history_sheet,"出庫",data.loc[idx],before,after,after-before,"SP -0.5")
+                st.rerun()
+        with rb2:
+            if st.button("− 1", key=f"minus1_{idx}", use_container_width=True):
+                before = normalize_stock(data.loc[idx,"保有数"])
+                after = max(before-1.0, 0)
+                data.loc[idx,"保有数"] = after
+                save_data(inventory_sheet, data)
+                append_history(history_sheet,"出庫",data.loc[idx],before,after,after-before,"SP -1")
+                st.rerun()
+        rc1, rc2, rc3 = st.columns(3)
+        with rc1:
+            if st.button("✏️ 編集", key=f"edit_button_{idx}", use_container_width=True):
+                st.session_state[edit_key] = not st.session_state.get(edit_key, False)
+                st.rerun()
+        with rc2:
+            if st.button("📷 QR", key=f"qr_button_{idx}", use_container_width=True):
+                st.session_state[qr_key] = not st.session_state.get(qr_key, False)
+                st.rerun()
+        with rc3:
+            if st.button("🗑️ 削除", key=f"delete_{idx}", use_container_width=True):
+                st.session_state[pending_key] = True
+                st.rerun()
     else:
+        # PC：既存の5列レイアウト
+        b1, b2, b3, b4, b5 = st.columns([1, 1, 1, 1, 2])
+        with b1:
+            if st.button("＋0.5", key=f"plus05_{idx}", use_container_width=True):
+                before = normalize_stock(data.loc[idx,"保有数"])
+                after = min(before+0.5, MAX_STOCK)
+                data.loc[idx,"保有数"] = after
+                save_data(inventory_sheet, data)
+                append_history(history_sheet,"入庫",data.loc[idx],before,after,after-before,"保有リスト +0.5")
+                st.rerun()
+        with b2:
+            if st.button("＋1", key=f"plus1_{idx}", use_container_width=True):
+                before = normalize_stock(data.loc[idx,"保有数"])
+                after = min(before+1.0, MAX_STOCK)
+                data.loc[idx,"保有数"] = after
+                save_data(inventory_sheet, data)
+                append_history(history_sheet,"入庫",data.loc[idx],before,after,after-before,"保有リスト +1")
+                st.rerun()
+        with b3:
+            if st.button("−0.5", key=f"minus05_{idx}", use_container_width=True):
+                before = normalize_stock(data.loc[idx,"保有数"])
+                after = max(before-0.5, 0)
+                data.loc[idx,"保有数"] = after
+                save_data(inventory_sheet, data)
+                append_history(history_sheet,"出庫",data.loc[idx],before,after,after-before,"保有リスト -0.5")
+                st.rerun()
+        with b4:
+            if st.button("−1", key=f"minus1_{idx}", use_container_width=True):
+                before = normalize_stock(data.loc[idx,"保有数"])
+                after = max(before-1.0, 0)
+                data.loc[idx,"保有数"] = after
+                save_data(inventory_sheet, data)
+                append_history(history_sheet,"出庫",data.loc[idx],before,after,after-before,"保有リスト -1")
+                st.rerun()
+        with b5:
+            e1, e2, e3 = st.columns(3)
+            with e1:
+                if st.button("編集", key=f"edit_button_{idx}", use_container_width=True):
+                    st.session_state[edit_key] = not st.session_state.get(edit_key, False)
+                    st.rerun()
+            with e2:
+                if st.button("QR", key=f"qr_button_{idx}", use_container_width=True):
+                    st.session_state[qr_key] = not st.session_state.get(qr_key, False)
+                    st.rerun()
+            with e3:
+                if st.button("削除", key=f"delete_{idx}", use_container_width=True):
+                    st.session_state[pending_key] = True
+                    st.rerun()
+
+    # QRコード表示
+    if st.session_state.get(qr_key):
+        qr_text = (
+            f"No: {row['No']}\n名称: {row['名称']}\n種類: {row['種類']}\n"
+            f"艶: {row.get('艶','')}\n保管場所: {row.get('保管場所','')}\n保有数: {qty:g} {unit_label(qty)}"
+        )
+        qr_b64 = make_qr_base64(qr_text)
+        st.markdown(
+            f"""<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;
+                padding:12px;margin-top:6px;display:flex;align-items:flex-start;gap:12px;">
+                <img src="data:image/png;base64,{qr_b64}" width="130"
+                     style="border:1px solid #ccc;border-radius:4px;"/>
+                <div style="font-size:13px;color:#374151;line-height:2;">
+                    <b>{row['No']}　{row['名称']}</b><br>
+                    種類: {row['種類']}<br>艶: {row.get('艶','—')}<br>
+                    場所: {row.get('保管場所','—')}<br>保有数: {qty:g} {unit_label(qty)}
+                </div></div>""",
+            unsafe_allow_html=True,
+        )
+        if st.button("QRを閉じる", key=f"qr_close_{idx}", use_container_width=True):
+            st.session_state.pop(qr_key, None)
+            st.rerun()
+
+    # 編集フォーム
+    if st.session_state.get(edit_key):
+        with st.form(f"edit_form_{idx}"):
+            st.write(f"**{row['No']} を編集**")
+            ec1, ec2, ec3 = st.columns(3)
+            with ec1:
+                edit_customer = st.selectbox("得意先", customers,
+                    index=customers.index(row["得意先"]) if row["得意先"] in customers else 0,
+                    key=f"edit_customer_{idx}")
+                edit_type = st.selectbox("種類", types,
+                    index=types.index(row["種類"]) if row["種類"] in types else 0,
+                    key=f"edit_type_{idx}")
+                edit_name = st.text_input("名称", value=str(row["名称"]), key=f"edit_name_{idx}")
+            with ec2:
+                edit_gloss = st.selectbox("艶 / Finish", GLOSS_OPTIONS,
+                    index=GLOSS_OPTIONS.index(row["艶"]) if row["艶"] in GLOSS_OPTIONS else 0,
+                    key=f"edit_gloss_{idx}")
+                edit_order = st.selectbox("発注状況", ORDER_OPTIONS,
+                    index=ORDER_OPTIONS.index(row.get("発注状況","")) if row.get("発注状況","") in ORDER_OPTIONS else 0,
+                    key=f"edit_order_{idx}")
+                edit_location = st.text_input("保管場所", value=str(row.get("保管場所","")), key=f"edit_loc_{idx}")
+                edit_hex = st.color_picker("色", normalize_hex(row["HEX"]), key=f"edit_hex_{idx}")
+            with ec3:
+                edit_qty = st.number_input("保有数", min_value=0.0, max_value=MAX_STOCK, step=STEP,
+                    value=normalize_stock(row["保有数"]), key=f"edit_qty_{idx}")
+                try:
+                    default_received = pd.to_datetime(row.get("入荷日", today_str())).date()
+                except Exception:
+                    default_received = datetime.now().date()
+                edit_received_date = st.date_input("入荷日", value=default_received, key=f"edit_received_{idx}")
+                st.markdown(f"<div>{can_display_html(edit_qty, edit_hex)}</div>", unsafe_allow_html=True)
+            memo = st.text_input("メモ", value="保有リストから編集", key=f"edit_memo_{idx}")
+            s1, s2 = st.columns(2)
+            with s1:
+                submitted = st.form_submit_button("変更を保存", use_container_width=True)
+            with s2:
+                cancelled = st.form_submit_button("キャンセル", use_container_width=True)
+            if submitted:
+                before_qty = normalize_stock(data.loc[idx,"保有数"])
+                data.loc[idx,"得意先"] = edit_customer
+                data.loc[idx,"種類"] = edit_type
+                data.loc[idx,"名称"] = edit_name
+                data.loc[idx,"HEX"] = edit_hex
+                data.loc[idx,"艶"] = edit_gloss
+                data.loc[idx,"発注状況"] = edit_order
+                data.loc[idx,"保有数"] = edit_qty
+                data.loc[idx,"入荷日"] = edit_received_date.strftime("%Y-%m-%d")
+                data.loc[idx,"保管場所"] = edit_location
+                save_data(inventory_sheet, data)
+                append_history(history_sheet,"編集",data.loc[idx],before_qty,edit_qty,normalize_stock(edit_qty)-before_qty,memo)
+                st.session_state.pop(edit_key, None)
+                st.success("変更しました")
+                st.rerun()
+            if cancelled:
+                st.session_state.pop(edit_key, None)
+                st.rerun()
+
+    # 削除確認
+    if st.session_state.get(pending_key):
+        ca, cb = st.columns(2)
+        with ca:
+            if st.button("本当に削除", key=f"confirm_yes_{idx}", use_container_width=True):
+                deleted_row = data.loc[idx].copy()
+                before_qty = normalize_stock(deleted_row["保有数"])
+                data.drop(index=idx, inplace=True)
+                save_data(inventory_sheet, data)
+                append_history(history_sheet,"削除",deleted_row,before_qty,0,-before_qty,"削除")
+                st.session_state.pop(pending_key, None)
+                st.success("削除しました")
+                st.rerun()
+        with cb:
+            if st.button("キャンセル", key=f"confirm_no_{idx}", use_container_width=True):
+                st.session_state.pop(pending_key, None)
+                st.rerun()
+
+
+if len(owned) == 0:
+    st.info("該当する在庫データがありません。")
+elif is_mobile:
+    # ===== スマホ専用カード =====
+    for idx, row in owned.iterrows():
+        display_hex = normalize_hex(row["HEX"])
+        expiry_text, expiry_color = expiry_info(row.get("入荷日",""), row.get("種類",""))
+        qty = normalize_stock(row["保有数"])
+        location_text = str(row.get("保管場所","")).strip() or "—"
+        gloss_text = str(row.get("艶","")).strip() or "—"
+        order_status = str(row.get("発注状況","")).strip()
+        order_badge_html = ""
+        if order_status and order_status in ORDER_BADGE_COLOR:
+            bg = ORDER_BADGE_COLOR[order_status]
+            order_badge_html = f'<span style="background:{bg};color:#fff;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:600;">📦 {order_status}</span>'
+
+        st.markdown(
+            f"""
+            <div class="sp-card">
+              <div class="sp-card-header">
+                <div class="sp-chip" style="background:{display_hex};"></div>
+                <div>
+                  <div class="sp-title">{row['No']}　{row['名称']}</div>
+                  <div class="sp-sub">{row['得意先']} / {row['種類']} / {gloss_text}</div>
+                </div>
+              </div>
+              <div class="sp-qty">{qty:g} {unit_label(qty)}</div>
+              {can_display_html(qty, display_hex)}
+              <div style="margin-top:6px;">
+                <span class="sp-badge" style="color:{expiry_color};">📅 {expiry_text}</span>
+                <span class="sp-badge">📍 {location_text}</span>
+                {order_badge_html}
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        render_card_buttons(idx, row, qty)
+        st.markdown("<hr style='margin:8px 0;'>", unsafe_allow_html=True)
+else:
+    # ===== PC：2カラムレイアウト =====
+    left, right = st.columns([2, 1])
+    with left:
         for idx, row in owned.iterrows():
             display_hex = normalize_hex(row["HEX"])
-            expiry_text, expiry_color = expiry_info(row.get("入荷日", ""), row.get("種類", ""))
+            expiry_text, expiry_color = expiry_info(row.get("入荷日",""), row.get("種類",""))
             qty = normalize_stock(row["保有数"])
-            location_text = str(row.get("保管場所", "")).strip() or "No Location"
-            gloss_text = str(row.get("艶", "")).strip() or "No Finish"
-            order_status = str(row.get("発注状況", "")).strip()
+            location_text = str(row.get("保管場所","")).strip() or "No Location"
+            gloss_text = str(row.get("艶","")).strip() or "No Finish"
+            order_status = str(row.get("発注状況","")).strip()
             order_badge_html = ""
             if order_status and order_status in ORDER_BADGE_COLOR:
                 bg = ORDER_BADGE_COLOR[order_status]
                 order_badge_html = f'<span class="order-badge" style="background:{bg};">📦 {order_status}</span>'
-
             st.markdown(
-                f"""
-                <div class="paint-card">
-                    <div class="paint-card-inner">
-                        <div class="paint-chip" style="background-color:{display_hex};"></div>
-                        <div class="paint-info">
-                            <span style="font-size:11px;color:#6b7280;">{row['得意先']} / {row['種類']}</span><br>
-                            <span class="paint-no-name">{row['No']}　{row['名称']}</span><br>
-                            <span class="badge">{gloss_text}</span>
-                            <span class="badge" style="color:{expiry_color};">📅 {row.get('入荷日', '')} ｜ {expiry_text}</span>
-                            <span class="badge">📍 {location_text}</span>
-                            {order_badge_html}<br>
-                            <span>{can_display_html(qty, display_hex)}</span>
-                            <span style="font-size:15px; margin-left:8px; vertical-align:middle;">{qty:g} {unit_label(qty)}</span>
-                        </div>
-                    </div>
-                </div>
-                """,
+                f"""<div class="paint-card"><div class="paint-card-inner">
+                    <div class="paint-chip" style="background-color:{display_hex};"></div>
+                    <div class="paint-info">
+                        <span style="font-size:11px;color:#6b7280;">{row['得意先']} / {row['種類']}</span><br>
+                        <span class="paint-no-name">{row['No']}　{row['名称']}</span><br>
+                        <span class="badge">{gloss_text}</span>
+                        <span class="badge" style="color:{expiry_color};">📅 {row.get('入荷日','')} ｜ {expiry_text}</span>
+                        <span class="badge">📍 {location_text}</span>
+                        {order_badge_html}<br>
+                        {can_display_html(qty, display_hex)}
+                        <span style="font-size:15px;margin-left:8px;">{qty:g} {unit_label(qty)}</span>
+                    </div></div></div>""",
                 unsafe_allow_html=True,
             )
-
-            b1, b2, b3, b4, b5 = st.columns([1, 1, 1, 1, 2])
-
-            with b1:
-                if st.button("＋0.5", key=f"plus05_{idx}", use_container_width=True):
-                    before_qty = normalize_stock(data.loc[idx, "保有数"])
-                    after_qty = min(before_qty + 0.5, MAX_STOCK)
-                    data.loc[idx, "保有数"] = after_qty
-                    save_data(inventory_sheet, data)
-                    append_history(history_sheet, "入庫", data.loc[idx], before_qty, after_qty, after_qty - before_qty, "保有リスト +0.5")
-                    st.rerun()
-
-            with b2:
-                if st.button("＋1", key=f"plus1_{idx}", use_container_width=True):
-                    before_qty = normalize_stock(data.loc[idx, "保有数"])
-                    after_qty = min(before_qty + 1.0, MAX_STOCK)
-                    data.loc[idx, "保有数"] = after_qty
-                    save_data(inventory_sheet, data)
-                    append_history(history_sheet, "入庫", data.loc[idx], before_qty, after_qty, after_qty - before_qty, "保有リスト +1")
-                    st.rerun()
-
-            with b3:
-                if st.button("−0.5", key=f"minus05_{idx}", use_container_width=True):
-                    before_qty = normalize_stock(data.loc[idx, "保有数"])
-                    after_qty = max(before_qty - 0.5, 0)
-                    data.loc[idx, "保有数"] = after_qty
-                    save_data(inventory_sheet, data)
-                    append_history(history_sheet, "出庫", data.loc[idx], before_qty, after_qty, after_qty - before_qty, "保有リスト -0.5")
-                    st.rerun()
-
-            with b4:
-                if st.button("−1", key=f"minus1_{idx}", use_container_width=True):
-                    before_qty = normalize_stock(data.loc[idx, "保有数"])
-                    after_qty = max(before_qty - 1.0, 0)
-                    data.loc[idx, "保有数"] = after_qty
-                    save_data(inventory_sheet, data)
-                    append_history(history_sheet, "出庫", data.loc[idx], before_qty, after_qty, after_qty - before_qty, "保有リスト -1")
-                    st.rerun()
-
-            with b5:
-                edit_key = f"edit_{idx}"
-                pending_key = f"pending_delete_{idx}"
-
-                qr_key = f"qr_{idx}"
-                e1, e2, e3 = st.columns(3)
-                with e1:
-                    if st.button("編集", key=f"edit_button_{idx}", use_container_width=True):
-                        st.session_state[edit_key] = not st.session_state.get(edit_key, False)
-                        st.rerun()
-                with e2:
-                    if st.button("QR", key=f"qr_button_{idx}", use_container_width=True):
-                        st.session_state[qr_key] = not st.session_state.get(qr_key, False)
-                        st.rerun()
-                with e3:
-                    if st.button("削除", key=f"delete_{idx}", use_container_width=True):
-                        st.session_state[pending_key] = True
-                        st.rerun()
-
-                # QRコード表示
-                if st.session_state.get(qr_key):
-                    qr_text = (
-                        f"No: {row['No']}\n"
-                        f"名称: {row['名称']}\n"
-                        f"種類: {row['種類']}\n"
-                        f"艶: {row.get('艶','')}\n"
-                        f"保管場所: {row.get('保管場所','')}\n"
-                        f"保有数: {qty:g} {unit_label(qty)}"
-                    )
-                    qr_b64 = make_qr_base64(qr_text)
-                    st.markdown(
-                        f"""
-                        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;
-                                    padding:10px;margin-top:6px;display:flex;align-items:flex-start;gap:12px;">
-                            <img src="data:image/png;base64,{qr_b64}" width="120"
-                                 style="border:1px solid #ccc;border-radius:4px;"/>
-                            <div style="font-size:12px;color:#374151;line-height:1.8;">
-                                <b>📦 {row['No']}　{row['名称']}</b><br>
-                                種類: {row['種類']}<br>
-                                艶: {row.get('艶','—')}<br>
-                                場所: {row.get('保管場所','—')}<br>
-                                保有数: {qty:g} {unit_label(qty)}
-                            </div>
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
-                    if st.button("QRを閉じる", key=f"qr_close_{idx}", use_container_width=True):
-                        st.session_state.pop(qr_key, None)
-                        st.rerun()
-
-                if st.session_state.get(edit_key):
-                    with st.form(f"edit_form_{idx}"):
-                        st.write(f"**{row['No']} を編集 / Edit**")
-                        ec1, ec2, ec3 = st.columns(3)
-
-                        with ec1:
-                            edit_customer = st.selectbox(
-                                "得意先", customers,
-                                index=customers.index(row["得意先"]) if row["得意先"] in customers else 0,
-                                key=f"edit_customer_{idx}",
-                            )
-                            edit_type = st.selectbox(
-                                "種類", types,
-                                index=types.index(row["種類"]) if row["種類"] in types else 0,
-                                key=f"edit_type_{idx}",
-                            )
-                            edit_name = st.text_input("名称", value=str(row["名称"]), key=f"edit_name_{idx}")
-
-                        with ec2:
-                            edit_gloss = st.selectbox(
-                                "艶 / Finish", GLOSS_OPTIONS,
-                                index=GLOSS_OPTIONS.index(row["艶"]) if row["艶"] in GLOSS_OPTIONS else 0,
-                                key=f"edit_gloss_{idx}",
-                            )
-                            edit_order = st.selectbox(
-                                "発注状況", ORDER_OPTIONS,
-                                index=ORDER_OPTIONS.index(row.get("発注状況", "")) if row.get("発注状況", "") in ORDER_OPTIONS else 0,
-                                key=f"edit_order_{idx}",
-                            )
-                            edit_location = st.text_input("保管場所", value=str(row.get("保管場所", "")), key=f"edit_loc_{idx}")
-                            edit_hex = st.color_picker("色", normalize_hex(row["HEX"]), key=f"edit_hex_{idx}")
-
-                        with ec3:
-                            edit_qty = st.number_input(
-                                "保有数", min_value=0.0, max_value=MAX_STOCK, step=STEP,
-                                value=normalize_stock(row["保有数"]), key=f"edit_qty_{idx}",
-                            )
-                            try:
-                                default_received = pd.to_datetime(row.get("入荷日", today_str())).date()
-                            except Exception:
-                                default_received = datetime.now().date()
-                            edit_received_date = st.date_input(
-                                "入荷日", value=default_received, key=f"edit_received_{idx}",
-                            )
-                            st.markdown(f"<div>{can_display_html(edit_qty, edit_hex)}</div>", unsafe_allow_html=True)
-
-                        memo = st.text_input("メモ / Memo", value="保有リストから編集", key=f"edit_memo_{idx}")
-                        s1, s2 = st.columns(2)
-                        with s1:
-                            submitted = st.form_submit_button("変更を保存 / Save", use_container_width=True)
-                        with s2:
-                            cancelled = st.form_submit_button("キャンセル / Cancel", use_container_width=True)
-
-                        if submitted:
-                            before_qty = normalize_stock(data.loc[idx, "保有数"])
-                            data.loc[idx, "得意先"] = edit_customer
-                            data.loc[idx, "種類"] = edit_type
-                            data.loc[idx, "名称"] = edit_name
-                            data.loc[idx, "HEX"] = edit_hex
-                            data.loc[idx, "艶"] = edit_gloss
-                            data.loc[idx, "発注状況"] = edit_order
-                            data.loc[idx, "保有数"] = edit_qty
-                            data.loc[idx, "入荷日"] = edit_received_date.strftime("%Y-%m-%d")
-                            data.loc[idx, "保管場所"] = edit_location
-                            save_data(inventory_sheet, data)
-                            append_history(
-                                history_sheet, "編集", data.loc[idx],
-                                before_qty, edit_qty, normalize_stock(edit_qty) - before_qty, memo,
-                            )
-                            st.session_state.pop(edit_key, None)
-                            st.success("変更しました / Updated")
-                            st.rerun()
-
-                        if cancelled:
-                            st.session_state.pop(edit_key, None)
-                            st.rerun()
-
-                if st.session_state.get(pending_key):
-                    ca, cb = st.columns(2)
-
-                    with ca:
-                        if st.button("本当に削除 / Confirm Delete", key=f"confirm_yes_{idx}", use_container_width=True):
-                            deleted_row = data.loc[idx].copy()
-                            before_qty = normalize_stock(deleted_row["保有数"])
-                            data = data.drop(index=idx)
-                            save_data(inventory_sheet, data)
-                            append_history(history_sheet, "削除", deleted_row, before_qty, 0, -before_qty, "保有リストから削除")
-                            st.session_state.pop(pending_key, None)
-                            st.success("削除しました / Deleted")
-                            st.rerun()
-
-                    with cb:
-                        if st.button("キャンセル / Cancel", key=f"confirm_no_{idx}", use_container_width=True):
-                            st.session_state.pop(pending_key, None)
-                            st.rerun()
-
-
-# =========================
-# 保有カラー一覧（PCのみ右カラム）
-# =========================
-if right is not None:
+            render_card_buttons(idx, row, qty)
     with right:
         st.subheader("カラー一覧 / Colors")
-        if len(owned) == 0:
-            st.info("保有カラーなし / No colors in stock.")
-        else:
-            for _, row in owned.iterrows():
-                display_hex = normalize_hex(row["HEX"])
-                qty = normalize_stock(row["保有数"])
-                order_st = str(row.get("発注状況", "")).strip()
-                order_dot = f' <span style="color:{ORDER_BADGE_COLOR.get(order_st,"#999")};font-size:10px;">●{order_st}</span>' if order_st else ""
-                st.markdown(
-                    f"""
-                    <div class="small-color-row">
-                        <div class="small-color-chip" style="background-color:{display_hex};"></div>
-                        <div style="font-size:12px;">{row['No']}　{row['名称']}　<b>{qty:g}</b> {unit_label(qty)}{order_dot}<br>
-                        <span style="color:#6b7280;font-size:11px;">📍 {row.get('保管場所', '')}</span></div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
-            st.divider()
-            st.metric("保有色数 / Colors", len(owned))
-            st.metric("保有数量 / Quantity", f"{owned['保有数'].sum():g}")
+        for _, row in owned.iterrows():
+            display_hex = normalize_hex(row["HEX"])
+            qty = normalize_stock(row["保有数"])
+            order_st = str(row.get("発注状況","")).strip()
+            order_dot = f' <span style="color:{ORDER_BADGE_COLOR.get(order_st,"#999")};font-size:10px;">●{order_st}</span>' if order_st else ""
+            st.markdown(
+                f"""<div class="small-color-row">
+                    <div class="small-color-chip" style="background-color:{display_hex};"></div>
+                    <div style="font-size:12px;">{row['No']}　{row['名称']}　<b>{qty:g}</b> {unit_label(qty)}{order_dot}<br>
+                    <span style="color:#6b7280;font-size:11px;">📍 {row.get('保管場所','')}</span></div>
+                </div>""",
+                unsafe_allow_html=True,
+            )
+        st.divider()
+        st.metric("保有色数 / Colors", len(owned))
+        st.metric("保有数量 / Quantity", f"{owned['保有数'].sum():g}")
 
 st.divider()
 
