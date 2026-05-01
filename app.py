@@ -277,12 +277,26 @@ def load_color_master():
     else:
         df = pd.DataFrame(columns=["日塗工番号", "色名", "HEX"])
 
+    # CSVの列名ゆれ対策
+    rename_map = {}
+    for col in df.columns:
+        c = str(col).strip().lower()
+        if c in ["no", "番号", "色番号", "日塗工", "日塗工番号", "code", "color_code"]:
+            rename_map[col] = "日塗工番号"
+        elif c in ["色名", "名称", "name", "color_name"]:
+            rename_map[col] = "色名"
+        elif c in ["hex", "hex値", "カラー", "color", "colour"]:
+            rename_map[col] = "HEX"
+    df = df.rename(columns=rename_map)
+
     for col in ["日塗工番号", "色名", "HEX"]:
         if col not in df.columns:
             df[col] = ""
 
+    df = df[["日塗工番号", "色名", "HEX"]].copy()
     df["検索番号"] = df["日塗工番号"].apply(clean_code)
     df["HEX"] = df["HEX"].apply(normalize_hex)
+
     return df
 
 
@@ -478,11 +492,21 @@ with top2:
     st.metric("総保有数", f"{data['保有数'].sum():g}")
 with top3:
     if st.button("🔄 在庫を再読み込み", use_container_width=True):
+        load_color_master.clear()
         st.rerun()
 
 if st.button("⚙️ マスタ再読み込み", use_container_width=True):
     load_master_by_sheet_name.clear()
     st.rerun()
+
+# 色が見つからないデータを画面に出す
+DEFAULT_GRAY_VALUES = {"", "#999999", "#929396"}
+gray_rows = data[data["HEX"].astype(str).str.upper().isin(DEFAULT_GRAY_VALUES)].copy()
+if len(gray_rows) > 0:
+    with st.expander("⚠️ 色がグレー表示になっているデータ"):
+        st.write("以下は、スプレッドシートのHEXが空欄・仮グレー、または nittoko_colors.csv で色が見つからない可能性があります。")
+        st.dataframe(gray_rows[["No", "名称", "HEX", "保有数"]], use_container_width=True)
+        st.write("対処方法：GoogleスプレッドシートのHEX列に正しい `#RRGGBB` を入れるか、nittoko_colors.csv に該当番号とHEXを追加してください。")
 
 st.divider()
 
