@@ -291,8 +291,33 @@ def load_data(sheet, color_df):
     df["種類"] = df["種類"].astype(str)
     df["No"] = df["No"].astype(str).apply(clean_code)
     df["名称"] = df["名称"].astype(str)
-    df["HEX"] = df["HEX"].apply(normalize_hex)
     df["保有数"] = df["保有数"].apply(normalize_stock)
+
+    # スプレッドシートから読んだHEXを優先。
+    # 空欄・不正なHEXの場合だけ、日塗工CSVから自動補完する。
+    fixed_hex_list = []
+    fixed_name_list = []
+
+    for _, row in df.iterrows():
+        raw_hex = str(row["HEX"]).strip()
+        raw_name = str(row["名称"]).strip()
+        auto_name, auto_hex = color_lookup(row["No"], color_df)
+
+        if is_valid_hex(raw_hex):
+            fixed_hex = raw_hex.upper()
+        else:
+            fixed_hex = auto_hex
+
+        if raw_name:
+            fixed_name = raw_name
+        else:
+            fixed_name = auto_name
+
+        fixed_hex_list.append(fixed_hex)
+        fixed_name_list.append(fixed_name)
+
+    df["HEX"] = fixed_hex_list
+    df["名称"] = fixed_name_list
 
     return df
 
