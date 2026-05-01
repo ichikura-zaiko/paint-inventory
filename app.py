@@ -148,6 +148,7 @@ def normalize_stock(value):
 
 
 def can_display(qty):
+    """テキスト用の簡易表示。data_editorなどHTMLが使えない場所用。"""
     qty = normalize_stock(qty)
     full = int(qty)
     half = (qty - full) >= 0.5
@@ -155,16 +156,51 @@ def can_display(qty):
     display = ""
     for i in range(5):
         if i < min(full, 5):
-            display += "🟦"
+            display += "■"
         elif i == full and half and full < 5:
-            display += "◧"
+            display += "◩"
         else:
-            display += "⬜"
+            display += "□"
 
     if qty > 5:
         display += f" +{qty - 5:g}"
 
     return display
+
+
+def can_display_html(qty, hex_color):
+    """実際の塗料色で、1マス=1缶として表示する。"""
+    qty = normalize_stock(qty)
+    color = normalize_hex(hex_color)
+    full = int(qty)
+    half = (qty - full) >= 0.5
+
+    boxes = []
+    for i in range(5):
+        if i < min(full, 5):
+            bg = color
+        elif i == full and half and full < 5:
+            bg = f"linear-gradient(90deg, {color} 50%, #ffffff 50%)"
+        else:
+            bg = "#ffffff"
+
+        boxes.append(
+            f"""
+            <span style="
+                display:inline-block;
+                width:28px;
+                height:28px;
+                margin-right:5px;
+                border:1px solid #777;
+                border-radius:5px;
+                background:{bg};
+                vertical-align:middle;
+            "></span>
+            """
+        )
+
+    extra = f"<span style='font-size:18px; margin-left:4px;'>+{qty - 5:g}</span>" if qty > 5 else ""
+    return "".join(boxes) + extra
 
 
 # =========================
@@ -443,7 +479,7 @@ name = name_input if name_input else auto_name
 with col3:
     hex_color = st.color_picker("色", auto_hex)
     stock = st.number_input("保有数", min_value=0.0, max_value=MAX_STOCK, step=STEP)
-    st.markdown(f"<div class='paint-stock'>{can_display(stock)}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='paint-stock'>{can_display_html(stock, hex_color)}</div>", unsafe_allow_html=True)
 
 if st.button("追加 / 更新して保存", type="primary", use_container_width=True):
     if number_clean == "":
@@ -513,7 +549,7 @@ with left:
                         <div class="paint-info">
                             <b>{row['得意先']} / {row['種類']}</b><br>
                             <span class="paint-no-name">{row['No']}　{row['名称']}</span><br>
-                            <span class="paint-stock">{can_display(row['保有数'])}</span>
+                            <span class="paint-stock">{can_display_html(row['保有数'], display_hex)}</span>
                             <span style="font-size:18px;">　{row['保有数']:g}個</span>
                         </div>
                     </div>
