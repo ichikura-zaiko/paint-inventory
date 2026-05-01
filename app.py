@@ -115,14 +115,24 @@ st.markdown(
     .stButton > button {
         padding: 4px 10px !important; min-height: 34px !important; font-size: 0.85rem !important;
     }
-    /* スマホ専用：全ボタンを強制的に小さく */
-    .sp-compact-btns button {
-        padding: 2px 2px !important;
-        min-height: 24px !important;
-        height: 24px !important;
-        font-size: 0.75rem !important;
-        line-height: 1 !important;
-        border-radius: 5px !important;
+    /* スマホ画面幅（768px以下）のときボタンを強制縮小 */
+    @media screen and (max-width: 768px) {
+        .stButton > button {
+            padding: 2px 4px !important;
+            min-height: 26px !important;
+            height: 26px !important;
+            font-size: 0.75rem !important;
+            line-height: 1 !important;
+            border-radius: 6px !important;
+        }
+        div[data-testid="column"] {
+            padding-left: 2px !important;
+            padding-right: 2px !important;
+        }
+        .block-container {
+            padding-left: 0.4rem !important;
+            padding-right: 0.4rem !important;
+        }
     }
     hr { margin-top: 0.3rem !important; margin-bottom: 0.3rem !important; }
     .stSelectbox label, .stTextInput label, .stNumberInput label,
