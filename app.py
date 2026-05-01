@@ -27,7 +27,7 @@ HISTORY_SHEET = "履歴"
 CUSTOMER_MASTER_SHEET = "得意先マスタ"
 TYPE_MASTER_SHEET = "種類マスタ"
 
-COLUMNS = ["得意先", "種類", "No", "名称", "HEX", "艶", "保有数", "入荷日"]
+COLUMNS = ["得意先", "種類", "No", "名称", "HEX", "艶", "保有数", "入荷日", "保管場所"]
 HISTORY_COLUMNS = ["日時", "操作", "得意先", "種類", "No", "名称", "変更前", "変更後", "差分", "メモ"]
 MASTER_COLUMNS = ["名称"]
 
@@ -141,7 +141,8 @@ def shelf_life_days(paint_type):
     return 365 if "粉体" in str(paint_type) else 60
 
 
-def expiry_info(received_date, paint_type):
+def expiry_info(received_date,
+            location, paint_type):
     try:
         received = pd.to_datetime(received_date).date()
     except Exception:
@@ -504,7 +505,7 @@ def append_history(history_sheet, operation, row, before_qty="", after_qty="", d
     history_sheet.append_row(history_row, value_input_option="USER_ENTERED")
 
 
-def add_or_update_data(data, customer, paint_type, number_clean, name, hex_color, gloss, stock, received_date):
+def add_or_update_data(data, customer, paint_type, number_clean, name, hex_color, gloss, stock, received_date, location):
     data = data.copy()
     data["検索No"] = data["No"].apply(clean_code)
 
@@ -532,6 +533,7 @@ def add_or_update_data(data, customer, paint_type, number_clean, name, hex_color
                 "艶": gloss,
                 "保有数": stock,
                 "入荷日": received_date,
+                "保管場所": location,
             }
         ])
         data = pd.concat([data.drop(columns=["検索No"], errors="ignore"), new_row], ignore_index=True)
@@ -614,6 +616,7 @@ with col3:
     gloss = st.selectbox("艶 / Finish", GLOSS_OPTIONS)
     stock = st.number_input("保有数 / Stock", min_value=0.0, max_value=MAX_STOCK, step=STEP)
     received_date = st.date_input("入荷日 / Received Date", value=datetime.now().date())
+    location = st.text_input("保管場所 / Location", placeholder="例: A-1, 塗料庫右-3")
     st.markdown(f"<div>{can_display_html(stock, hex_color)}</div>", unsafe_allow_html=True)
 
 if st.button("追加 / 更新して保存 / Add or Update", type="primary", use_container_width=True):
@@ -625,7 +628,7 @@ if st.button("追加 / 更新して保存 / Add or Update", type="primary", use_
         if existing_mask.any():
             before_qty = data.loc[existing_mask, "保有数"].iloc[0]
 
-        data = add_or_update_data(data, customer, paint_type, number_clean, name, hex_color, gloss, stock, received_date.strftime("%Y-%m-%d"))
+        data = add_or_update_data(data, customer, paint_type, number_clean, name, hex_color, gloss, stock, received_date.strftime("%Y-%m-%d"), location)
         save_data(inventory_sheet, data)
 
         saved_row = data.loc[data["No"].apply(clean_code) == number_clean].iloc[0]
@@ -707,6 +710,7 @@ with left:
                             <span class="paint-no-name">{row['No']}　{row['名称']}</span><br>
                             <span class="gloss-badge">{row['艶'] if str(row['艶']).strip() else '艶未設定'}</span>
                             <span class="gloss-badge" style="color:{expiry_color};">入荷日 / Received: {row.get('入荷日', '')} ｜ {expiry_text}</span><br>
+                            <span class="gloss-badge">📍 {row.get('保管場所','')}</span><br>
                             <span>{can_display_html(row['保有数'], display_hex)}</span>
                             <span style="font-size:18px; margin-left:10px; vertical-align:middle;">{row['保有数']:g} {unit_label(row['保有数'])}</span>
                         </div>
@@ -814,6 +818,8 @@ with left:
                             data.loc[idx, "艶"] = edit_gloss
                             data.loc[idx, "保有数"] = edit_qty
                             data.loc[idx, "入荷日"] = edit_received_date.strftime("%Y-%m-%d")
+                            edit_location = st.text_input("保管場所 / Location", value=str(row.get("保管場所","")), key=f"edit_loc_{idx}")
+                            data.loc[idx, "保管場所"] = edit_location("%Y-%m-%d")
                             save_data(inventory_sheet, data)
                             append_history(
                                 history_sheet,
@@ -901,6 +907,7 @@ edited_data = st.data_editor(
         "艶": st.column_config.SelectboxColumn("艶 / Finish", options=GLOSS_OPTIONS),
         "保有数": st.column_config.NumberColumn("保有数 / Stock", min_value=0.0, max_value=MAX_STOCK, step=STEP),
         "入荷日": st.column_config.DateColumn("入荷日 / Received Date"),
+        "保管場所": st.column_config.TextColumn("保管場所 / Location"),
     },
 )
 
