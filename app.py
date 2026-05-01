@@ -12,8 +12,8 @@ from datetime import datetime
 # 画面設定
 # =========================
 st.set_page_config(page_title="塗料在庫管理", page_icon="🎨", layout="wide")
-st.title("🎨 塗料在庫管理")
-st.caption("Googleスプレッドシート直結・キャッシュなし")
+st.title("🎨 塗料在庫管理 / Paint Inventory")
+st.caption("Googleスプレッドシート直結・キャッシュなし / Connected to Google Sheets, no inventory cache")
 
 
 # =========================
@@ -33,7 +33,7 @@ MASTER_COLUMNS = ["名称"]
 
 DEFAULT_CUSTOMERS = ["自社", "東洋紡エンジニアリング", "その他"]
 DEFAULT_TYPES = ["アクリル", "メラミン", "粉体", "ウレタン", "エポキシ", "ラッカー", "その他"]
-GLOSS_OPTIONS = ["", "艶あり", "半艶", "艶消し", "3分艶", "3分艶あり",  "7分艶", "その他"]
+GLOSS_OPTIONS = ["", "艶あり", "半艶", "艶消し", "3分艶", "3分艶あり", "5分艶", "7分艶", "その他"]
 
 MAX_STOCK = 50.0
 STEP = 0.5
@@ -522,15 +522,15 @@ except Exception as e:
 # =========================
 top1, top2, top3 = st.columns([1, 1, 1])
 with top1:
-    st.metric("登録件数", len(data))
+    st.metric("登録件数 / Items", len(data))
 with top2:
-    st.metric("総保有数", f"{data['保有数'].sum():g}")
+    st.metric("総保有数 / Total Stock", f"{data['保有数'].sum():g}")
 with top3:
-    if st.button("🔄 在庫を再読み込み", use_container_width=True):
+    if st.button("🔄 在庫を再読み込み / Reload Stock", use_container_width=True):
         load_color_master.clear()
         st.rerun()
 
-if st.button("⚙️ マスタ再読み込み", use_container_width=True):
+if st.button("⚙️ マスタ再読み込み / Reload Masters", use_container_width=True):
     load_master_by_sheet_name.clear()
     st.rerun()
 
@@ -549,18 +549,18 @@ st.divider()
 # =========================
 # 在庫入力
 # =========================
-st.subheader("在庫入力")
+st.subheader("在庫入力 / Add or Update Stock")
 
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    customer = st.selectbox("得意先", customers)
-    paint_type = st.selectbox("種類", types)
+    customer = st.selectbox("得意先 / Customer", customers)
+    paint_type = st.selectbox("種類 / Type", types)
 
 with col2:
-    number = st.text_input("No / 色番号")
+    number = st.text_input("No / 色番号 / Color No.")
     number_clean = clean_code(number)
-    name_input = st.text_input("名称")
+    name_input = st.text_input("名称 / Name")
 
 auto_name, auto_hex, found_color = color_lookup(number_clean, color_df)
 
@@ -573,14 +573,14 @@ if number_clean:
 name = name_input if name_input else auto_name
 
 with col3:
-    hex_color = st.color_picker("色", auto_hex)
-    gloss = st.selectbox("艶", GLOSS_OPTIONS)
-    stock = st.number_input("保有数", min_value=0.0, max_value=MAX_STOCK, step=STEP)
+    hex_color = st.color_picker("色 / Color", auto_hex)
+    gloss = st.selectbox("艶 / Finish", GLOSS_OPTIONS)
+    stock = st.number_input("保有数 / Stock", min_value=0.0, max_value=MAX_STOCK, step=STEP)
     st.markdown(f"<div>{can_display_html(stock, hex_color)}</div>", unsafe_allow_html=True)
 
-if st.button("追加 / 更新して保存", type="primary", use_container_width=True):
+if st.button("追加 / 更新して保存 / Add or Update", type="primary", use_container_width=True):
     if number_clean == "":
-        st.error("No / 色番号を入力してください")
+        st.error("No / 色番号を入力してください / Please enter Color No.")
     else:
         before_qty = ""
         existing_mask = data["No"].apply(clean_code) == number_clean
@@ -604,15 +604,15 @@ st.divider()
 # =========================
 # 検索・並び替え
 # =========================
-st.subheader("検索・並び替え")
+st.subheader("検索・並び替え / Search and Sort")
 
 c1, c2 = st.columns([2, 1])
 
 with c1:
-    search = st.text_input("色番号・名称・得意先・種類で検索")
+    search = st.text_input("色番号・名称・得意先・種類で検索 / Search by Color No., Name, Customer, Type")
 
 with c2:
-    sort_mode = st.selectbox("並び替え", ["色番号順", "保有数順", "得意先順", "種類順"])
+    sort_mode = st.selectbox("並び替え / Sort", ["色番号順", "保有数順", "得意先順", "種類順"])
 
 owned = data[data["保有数"] > 0].copy()
 
@@ -641,10 +641,10 @@ left, right = st.columns([2, 1])
 # 保有リスト
 # =========================
 with left:
-    st.subheader("保有リスト")
+    st.subheader("保有リスト / Stock List")
 
     if len(owned) == 0:
-        st.info("該当する在庫データがありません")
+        st.info("該当する在庫データがありません / No matching stock data.")
     else:
         for idx, row in owned.iterrows():
             display_hex = normalize_hex(row["HEX"])
@@ -670,7 +670,7 @@ with left:
             b1, b2, b3 = st.columns([1, 1, 2])
 
             with b1:
-                if st.button("＋0.5", key=f"plus_{idx}", use_container_width=True):
+                if st.button("＋0.5 / Add", key=f"plus_{idx}", use_container_width=True):
                     before_qty = normalize_stock(data.loc[idx, "保有数"])
                     after_qty = min(before_qty + STEP, MAX_STOCK)
                     data.loc[idx, "保有数"] = after_qty
@@ -679,7 +679,7 @@ with left:
                     st.rerun()
 
             with b2:
-                if st.button("−0.5", key=f"minus_{idx}", use_container_width=True):
+                if st.button("−0.5 / Use", key=f"minus_{idx}", use_container_width=True):
                     before_qty = normalize_stock(data.loc[idx, "保有数"])
                     after_qty = max(before_qty - STEP, 0)
                     data.loc[idx, "保有数"] = after_qty
@@ -693,45 +693,45 @@ with left:
 
                 e1, e2 = st.columns(2)
                 with e1:
-                    if st.button("編集", key=f"edit_button_{idx}", use_container_width=True):
+                    if st.button("編集 / Edit", key=f"edit_button_{idx}", use_container_width=True):
                         st.session_state[edit_key] = not st.session_state.get(edit_key, False)
                         st.rerun()
 
                 with e2:
-                    if st.button(f"削除 {row['No']}", key=f"delete_{idx}", use_container_width=True):
+                    if st.button(f"削除 / Delete {row['No']}", key=f"delete_{idx}", use_container_width=True):
                         st.session_state[pending_key] = True
                         st.rerun()
 
                 if st.session_state.get(edit_key):
                     with st.form(f"edit_form_{idx}"):
-                        st.write(f"**{row['No']} を編集**")
+                        st.write(f"**{row['No']} を編集 / Edit**")
                         ec1, ec2 = st.columns(2)
 
                         with ec1:
                             edit_customer = st.selectbox(
-                                "得意先",
+                                "得意先 / Customer",
                                 customers,
                                 index=customers.index(row["得意先"]) if row["得意先"] in customers else 0,
                                 key=f"edit_customer_{idx}",
                             )
                             edit_type = st.selectbox(
-                                "種類",
+                                "種類 / Type",
                                 types,
                                 index=types.index(row["種類"]) if row["種類"] in types else 0,
                                 key=f"edit_type_{idx}",
                             )
-                            edit_name = st.text_input("名称", value=str(row["名称"]), key=f"edit_name_{idx}")
+                            edit_name = st.text_input("名称 / Name", value=str(row["名称"]), key=f"edit_name_{idx}")
                             edit_gloss = st.selectbox(
-                                "艶",
+                                "艶 / Finish",
                                 GLOSS_OPTIONS,
                                 index=GLOSS_OPTIONS.index(row["艶"]) if row["艶"] in GLOSS_OPTIONS else 0,
                                 key=f"edit_gloss_{idx}",
                             )
 
                         with ec2:
-                            edit_hex = st.color_picker("色", normalize_hex(row["HEX"]), key=f"edit_hex_{idx}")
+                            edit_hex = st.color_picker("色 / Color", normalize_hex(row["HEX"]), key=f"edit_hex_{idx}")
                             edit_qty = st.number_input(
-                                "保有数",
+                                "保有数 / Stock",
                                 min_value=0.0,
                                 max_value=MAX_STOCK,
                                 step=STEP,
@@ -740,12 +740,12 @@ with left:
                             )
                             st.markdown(f"<div>{can_display_html(edit_qty, edit_hex)}</div>", unsafe_allow_html=True)
 
-                        memo = st.text_input("メモ", value="保有リストから編集", key=f"edit_memo_{idx}")
+                        memo = st.text_input("メモ / Memo", value="保有リストから編集", key=f"edit_memo_{idx}")
                         s1, s2 = st.columns(2)
                         with s1:
-                            submitted = st.form_submit_button("変更を保存", use_container_width=True)
+                            submitted = st.form_submit_button("変更を保存 / Save Changes", use_container_width=True)
                         with s2:
-                            cancelled = st.form_submit_button("キャンセル", use_container_width=True)
+                            cancelled = st.form_submit_button("キャンセル / Cancel", use_container_width=True)
 
                         if submitted:
                             before_qty = normalize_stock(data.loc[idx, "保有数"])
@@ -777,7 +777,7 @@ with left:
                     ca, cb = st.columns(2)
 
                     with ca:
-                        if st.button("本当に削除", key=f"confirm_yes_{idx}", use_container_width=True):
+                        if st.button("本当に削除 / Confirm Delete", key=f"confirm_yes_{idx}", use_container_width=True):
                             deleted_row = data.loc[idx].copy()
                             before_qty = normalize_stock(deleted_row["保有数"])
                             data = data.drop(index=idx)
@@ -788,7 +788,7 @@ with left:
                             st.rerun()
 
                     with cb:
-                        if st.button("キャンセル", key=f"confirm_no_{idx}", use_container_width=True):
+                        if st.button("キャンセル / Cancel", key=f"confirm_no_{idx}", use_container_width=True):
                             st.session_state.pop(pending_key, None)
                             st.rerun()
 
@@ -797,10 +797,10 @@ with left:
 # 保有カラー一覧
 # =========================
 with right:
-    st.subheader("保有カラー一覧")
+    st.subheader("保有カラー一覧 / Color Summary")
 
     if len(owned) == 0:
-        st.info("保有カラーなし")
+        st.info("保有カラーなし / No colors in stock.")
     else:
         for _, row in owned.iterrows():
             display_hex = normalize_hex(row["HEX"])
@@ -816,8 +816,8 @@ with right:
             )
 
         st.divider()
-        st.metric("保有色数", len(owned))
-        st.metric("保有数量", f"{owned['保有数'].sum():g}")
+        st.metric("保有色数 / Colors", len(owned))
+        st.metric("保有数量 / Quantity", f"{owned['保有数'].sum():g}")
 
 st.divider()
 
@@ -825,23 +825,23 @@ st.divider()
 # =========================
 # 直接テーブル編集
 # =========================
-st.subheader("直接テーブル編集")
-st.caption("ここで編集して保存すると、Googleスプレッドシートに反映されます。")
+st.subheader("直接テーブル編集 / Direct Table Edit")
+st.caption("ここで編集して保存すると、Googleスプレッドシートに反映されます。 / Edits here are saved to Google Sheets.")
 
 edited_data = st.data_editor(
     data,
     use_container_width=True,
     num_rows="dynamic",
     column_config={
-        "得意先": st.column_config.SelectboxColumn("得意先", options=customers),
-        "種類": st.column_config.SelectboxColumn("種類", options=types),
-        "HEX": st.column_config.TextColumn("HEX"),
-        "艶": st.column_config.SelectboxColumn("艶", options=GLOSS_OPTIONS),
-        "保有数": st.column_config.NumberColumn("保有数", min_value=0.0, max_value=MAX_STOCK, step=STEP),
+        "得意先": st.column_config.SelectboxColumn("得意先 / Customer", options=customers),
+        "種類": st.column_config.SelectboxColumn("種類 / Type", options=types),
+        "HEX": st.column_config.TextColumn("HEX / Color Code"),
+        "艶": st.column_config.SelectboxColumn("艶 / Finish", options=GLOSS_OPTIONS),
+        "保有数": st.column_config.NumberColumn("保有数 / Stock", min_value=0.0, max_value=MAX_STOCK, step=STEP),
     },
 )
 
-if st.button("テーブル編集を保存", use_container_width=True):
+if st.button("テーブル編集を保存 / Save Table Edits", use_container_width=True):
     save_data(inventory_sheet, edited_data)
     append_history(
         history_sheet,
@@ -852,7 +852,7 @@ if st.button("テーブル編集を保存", use_container_width=True):
         "",
         "直接テーブル編集で保存",
     )
-    st.success("Googleスプレッドシートに保存しました")
+    st.success("Googleスプレッドシートに保存しました / Saved to Google Sheets.")
     st.rerun()
 
 st.divider()
@@ -861,18 +861,18 @@ st.divider()
 # =========================
 # 履歴表示
 # =========================
-st.subheader("変更履歴")
+st.subheader("変更履歴 / Change History")
 
 try:
     history_values = history_sheet.get_all_values()
     if len(history_values) <= 1:
-        st.info("まだ履歴はありません。")
+        st.info("まだ履歴はありません。 / No history yet.")
     else:
         history_df = pd.DataFrame(history_values[1:], columns=history_values[0])
         history_df = history_df.tail(30).iloc[::-1]
         st.dataframe(history_df, use_container_width=True, hide_index=True)
 except Exception as e:
-    st.warning("履歴の読み込みに失敗しました。")
+    st.warning("履歴の読み込みに失敗しました。 / Failed to load history.")
     st.caption(str(e))
 
 st.divider()
@@ -881,7 +881,7 @@ st.divider()
 # =========================
 # マスタ管理説明
 # =========================
-with st.expander("⚙️ 得意先マスタ・種類マスタの使い方"):
+with st.expander("⚙️ 得意先マスタ・種類マスタの使い方 / How to Use Master Sheets"):
     st.write("同じGoogleスプレッドシート内に以下のシートを作成・使用します。")
     st.write("- 在庫")
     st.write("- 得意先マスタ")
