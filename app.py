@@ -528,6 +528,10 @@ def save_data(sheet, df):
     df["保有数"] = df["保有数"].apply(normalize_stock)
     df["入荷日"] = df["入荷日"].apply(lambda x: x.strftime("%Y-%m-%d") if hasattr(x, "strftime") else str(x))
 
+    # ===== 安全装置：空データでの全消しを防止 =====
+    if len(df) == 0:
+        st.error("⚠️ 在庫データが空のため保存を中止しました（全消し事故の防止）。画面を再読み込みしてください。")
+        st.stop()
     sheet.clear()
     sheet.update([COLUMNS] + df.astype(str).values.tolist(), "A1")
 
