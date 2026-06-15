@@ -532,8 +532,13 @@ def save_data(sheet, df):
     if len(df) == 0:
         st.error("⚠️ 在庫データが空のため保存を中止しました（全消し事故の防止）。画面を再読み込みしてください。")
         st.stop()
-    sheet.clear()
-    sheet.update([COLUMNS] + df.astype(str).values.tolist(), "A1")
+    _values = [COLUMNS] + df.astype(str).values.tolist()
+    # 上書き優先：先に書き込み、その後で余分な行だけ消す（一瞬も空にしない＝途中失敗でも全消えしない）
+    sheet.update(_values, "A1")
+    try:
+        sheet.batch_clear(["A{}:J1000".format(len(_values) + 1)])
+    except Exception:
+        pass
 
 
 def append_history(history_sheet, operation, row, before_qty="", after_qty="", diff="", memo=""):
