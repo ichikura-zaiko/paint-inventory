@@ -844,7 +844,7 @@ else:
     with sc5:
         sort_mode = st.selectbox("並び替え / Sort", ["色番号順", "保有数順", "得意先順", "種類順", "場所順", "入荷日順"])
 
-owned = data[data["保有数"] > 0].copy()
+owned = data[data["No"].astype(str).str.strip() != ""].copy()
 
 if search:
     s = clean_code(search)
