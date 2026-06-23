@@ -561,19 +561,22 @@ def append_history(history_sheet, operation, row, before_qty="", after_qty="", d
 def add_or_update_data(data, customer, paint_type, number_clean, name, hex_color, gloss, stock, received_date, location, order_status=""):
     data = data.copy()
     data["検索No"] = data["No"].apply(clean_code)
+    data["検索場所"] = data["保管場所"].astype(str).str.strip()
+    _loc = str(location).strip()
 
-    if number_clean in data["検索No"].values:
-        data.loc[data["検索No"] == number_clean, COLUMNS] = [
-            customer, paint_type, number_clean, name, hex_color, gloss, stock, received_date, location,
+    _mask = (data["検索No"] == number_clean) & (data["検索場所"] == _loc)
+    if _mask.any():
+        data.loc[_mask, COLUMNS] = [
+            customer, paint_type, number_clean, name, hex_color, gloss, stock, received_date, location, order_status,
         ]
     else:
         new_row = pd.DataFrame([{
             "得意先": customer, "種類": paint_type, "No": number_clean, "名称": name,
-            "HEX": hex_color, "艶": gloss, "保有数": stock, "入荷日": received_date, "保管場所": location,
+            "HEX": hex_color, "艶": gloss, "保有数": stock, "入荷日": received_date, "保管場所": location, "発注状況": order_status,
         }])
-        data = pd.concat([data.drop(columns=["検索No"], errors="ignore"), new_row], ignore_index=True)
+        data = pd.concat([data.drop(columns=["検索No", "検索場所"], errors="ignore"), new_row], ignore_index=True)
 
-    return data.drop(columns=["検索No"], errors="ignore")
+    return data.drop(columns=["検索No", "検索場所"], errors="ignore")
 
 
 # =========================
