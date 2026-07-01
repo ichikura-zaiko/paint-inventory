@@ -751,7 +751,7 @@ if is_mobile:
             order_status_input = st.selectbox("発注状況 / Order", ORDER_OPTIONS)
         fd1, fd2 = st.columns(2)
         with fd1:
-            received_date = st.date_input("入荷日 / Received", value=datetime.now().date())
+            received_date = st.date_input("入荷日 / Received", value=datetime.now().date(), min_value=datetime(1990, 1, 1).date(), max_value=datetime(2040, 12, 31).date())
         with fd2:
             location = st.text_input("保管場所 / Location", placeholder="例: A-1")
         st.markdown(f"<div style='margin:4px 0;'>{can_display_html(stock, hex_color)}</div>", unsafe_allow_html=True)
@@ -807,7 +807,7 @@ else:
     with r2c4:
         stock = st.number_input("保有数 / Stock", min_value=0.0, max_value=MAX_STOCK, step=STEP)
     with r2c5:
-        received_date = st.date_input("入荷日 / Received", value=datetime.now().date())
+        received_date = st.date_input("入荷日 / Received", value=datetime.now().date(), min_value=datetime(1990, 1, 1).date(), max_value=datetime(2040, 12, 31).date())
     with r2c6:
         location = st.text_input("保管場所 / Location", placeholder="例: A-1")
         st.markdown(f"<div style='margin-top:2px;'>{can_display_html(stock, hex_color)}</div>", unsafe_allow_html=True)
@@ -1032,7 +1032,7 @@ def render_card_buttons(idx, row, qty):
                     default_received = pd.to_datetime(row.get("入荷日", today_str())).date()
                 except Exception:
                     default_received = datetime.now().date()
-                edit_received_date = st.date_input("入荷日", value=default_received, key=f"edit_received_{idx}")
+                edit_received_date = st.date_input("入荷日", value=default_received, min_value=datetime(1990, 1, 1).date(), max_value=datetime(2040, 12, 31).date(), key=f"edit_received_{idx}")
                 st.markdown(f"<div>{can_display_html(edit_qty, edit_hex)}</div>", unsafe_allow_html=True)
             memo = st.text_input("メモ", value="保有リストから編集", key=f"edit_memo_{idx}")
             s1, s2 = st.columns(2)
