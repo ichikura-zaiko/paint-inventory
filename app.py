@@ -1178,6 +1178,10 @@ st.caption("ここで編集して保存すると、Googleスプレッドシー�
 editor_data = data.copy()
 editor_data["入荷日"] = pd.to_datetime(editor_data["入荷日"], errors="coerce").dt.date
 
+_esort = st.selectbox("並び替え / Sort", ["色番号順", "入荷日順", "得意先順", "種類順", "保有数順", "場所順"], key="editor_sort")
+_esort_map = {"色番号順": "No", "入荷日順": "入荷日", "得意先順": "得意先", "種類順": "種類", "保有数順": "保有数", "場所順": "保管場所"}
+editor_data = editor_data.sort_values(_esort_map[_esort], na_position="last").reset_index(drop=True)
+
 edited_data = st.data_editor(
     editor_data,
     use_container_width=True,
