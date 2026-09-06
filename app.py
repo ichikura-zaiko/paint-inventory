@@ -637,6 +637,9 @@ try:
     color_df = load_color_master()
     customers = load_master_by_sheet_name(CUSTOMER_MASTER_SHEET, DEFAULT_CUSTOMERS)
     types = load_master_by_sheet_name(TYPE_MASTER_SHEET, DEFAULT_TYPES)
+    for _pt in ["粉体エポキシ", "粉体ポリエステル", "粉体ポリウレタン", "粉体アクリル"]:
+        if _pt not in types:
+            types.append(_pt)
     data = load_data(inventory_sheet, color_df)
 except Exception as e:
     st.error("データ読み込みでエラーが発生しました。 / Failed to load data.")
