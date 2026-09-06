@@ -236,6 +236,56 @@ def normalize_hex(value):
     return value if is_valid_hex(value) else "#999999"
 
 
+def color_family(hex_color):
+    hc = normalize_hex(hex_color)
+    try:
+        r = int(hc[1:3], 16) / 255.0
+        g = int(hc[3:5], 16) / 255.0
+        b = int(hc[5:7], 16) / 255.0
+    except Exception:
+        return "その他"
+    mx = max(r, g, b)
+    mn = min(r, g, b)
+    light = (mx + mn) / 2
+    diff = mx - mn
+    if diff == 0:
+        sat = 0.0
+    elif abs(2 * light - 1) != 1:
+        sat = diff / (1 - abs(2 * light - 1))
+    else:
+        sat = 0.0
+    if diff == 0:
+        hue = 0.0
+    elif mx == r:
+        hue = ((g - b) / diff) % 6
+    elif mx == g:
+        hue = (b - r) / diff + 2
+    else:
+        hue = (r - g) / diff + 4
+    hue *= 60
+    if hue < 0:
+        hue += 360
+    if light >= 0.90 and sat < 0.15:
+        return "白系"
+    if light <= 0.13:
+        return "黒系"
+    if sat < 0.12:
+        return "グレー系"
+    if hue < 15 or hue >= 345:
+        return "赤系"
+    if hue < 40:
+        return "茶系" if light < 0.5 else "オレンジ系"
+    if hue < 70:
+        return "黄系"
+    if hue < 170:
+        return "緑系"
+    if hue < 250:
+        return "青系"
+    if hue < 300:
+        return "紫系"
+    return "ピンク系"
+
+
 def normalize_stock(value):
     value = pd.to_numeric(value, errors="coerce")
     if pd.isna(value):
@@ -721,6 +771,8 @@ if is_mobile:
         sort_mode = st.selectbox("並び替え / Sort", ["色番号順 / No.", "保有数順 / Stock", "場所順 / Location", "入荷日順 / Date"], label_visibility="collapsed")
     gloss_filter = "All／すべて"
     location_filter = ""
+    type_filter = "All／すべて"
+    color_filter = "All／すべて"
 
     # 在庫入力は折りたたみ
     with st.expander("➕ 在庫を追加・更新する / Add or Update Stock"):
@@ -835,16 +887,20 @@ else:
     st.divider()
 
     # PC検索
-    sc1, sc2, sc3, sc4, sc5 = st.columns([2, 1, 1, 1, 1])
+    sc1, sc2, sc3, sc4, sc5, sc6, sc7 = st.columns([2, 1, 1, 1, 1, 1, 1])
     with sc1:
         search = st.text_input("🔍 番号・名称・得意先・種類・場所", placeholder="Search...")
     with sc2:
-        gloss_filter = st.selectbox("艶 / Finish Filter", ["All／すべて"] + GLOSS_OPTIONS)
+        type_filter = st.selectbox("種類 / Type", ["All／すべて"] + types)
     with sc3:
-        order_filter = st.selectbox("発注状況", ["All／すべて"] + ORDER_OPTIONS)
+        color_filter = st.selectbox("色系統 / Color", ["All／すべて", "白系", "黒系", "グレー系", "赤系", "オレンジ系", "茶系", "黄系", "緑系", "青系", "紫系", "ピンク系"])
     with sc4:
-        location_filter = st.text_input("📍 場所フィルター", placeholder="例: A-1")
+        gloss_filter = st.selectbox("艶 / Finish", ["All／すべて"] + GLOSS_OPTIONS)
     with sc5:
+        order_filter = st.selectbox("発注状況", ["All／すべて"] + ORDER_OPTIONS)
+    with sc6:
+        location_filter = st.text_input("📍 場所", placeholder="例: A-1")
+    with sc7:
         sort_mode = st.selectbox("並び替え / Sort", ["色番号順", "保有数順", "得意先順", "種類順", "場所順", "入荷日順"])
 
 owned = data[data["No"].astype(str).str.strip() != ""].copy()
@@ -868,6 +924,11 @@ if order_filter != "All／すべて":
 if location_filter:
     lf = clean_code(location_filter)
     owned = owned[owned["保管場所"].astype(str).apply(clean_code).str.contains(lf, na=False)]
+
+if type_filter != "All／すべて":
+    owned = owned[owned["種類"].astype(str) == type_filter]
+if color_filter != "All／すべて":
+    owned = owned[owned["HEX"].apply(color_family) == color_filter]
 
 if sort_mode in ["色番号順", "色番号順 / No."]:
     owned = owned.sort_values("No")
