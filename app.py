@@ -760,6 +760,33 @@ if not is_mobile and len(gray_rows) > 0:
 if not is_mobile:
     st.divider()
 
+# =========================
+# 表示モード切替（探す / 管理）
+# =========================
+if "view_mode" not in st.session_state:
+    st.session_state["view_mode"] = "search"
+view_mode = st.session_state["view_mode"]
+
+_vm_a = "primary" if view_mode == "search" else "secondary"
+_vm_b = "primary" if view_mode == "manage" else "secondary"
+_vmc1, _vmc2 = st.columns(2)
+with _vmc1:
+    if st.button("🔍 塗料を探す / Search", use_container_width=True, type=_vm_a):
+        st.session_state["view_mode"] = "search"
+        st.rerun()
+with _vmc2:
+    if st.button("➕ 追加・管理 / Manage", use_container_width=True, type=_vm_b):
+        st.session_state["view_mode"] = "manage"
+        st.rerun()
+
+search = ""
+type_filter = "All／すべて"
+color_filter = "All／すべて"
+gloss_filter = "All／すべて"
+order_filter = "All／すべて"
+location_filter = ""
+sort_mode = "色番号順"
+
 if is_mobile:
     # =========================
     # スマホ：検索を先に・入力はexpander
@@ -834,77 +861,79 @@ else:
     # =========================
     # PC：在庫入力フォーム
     # =========================
-    st.subheader("在庫入力 / Add or Update Stock")
-    r1c1, r1c2, r1c3, r1c4 = st.columns([1.2, 1.2, 1, 1.5])
-    with r1c1:
-        customer = st.selectbox("得意先 / Customer", customers)
-    with r1c2:
-        paint_type = st.selectbox("種類 / Type", types)
-    with r1c3:
-        number = st.text_input("No / 色番号")
-        number_clean = clean_code(number)
-    with r1c4:
-        name_input = st.text_input("名称 / Name")
-    auto_name, auto_hex, found_color = color_lookup(number_clean, color_df)
-    if number_clean:
-        if found_color:
-            st.success(f"✅ {number_clean} の色を自動表示しました", icon=None)
-        else:
-            st.warning(f"⚠️ {number_clean} は色マスタにありません")
-    name = name_input if name_input else auto_name
-    r2c1, r2c2, r2c3, r2c4, r2c5, r2c6 = st.columns([0.7, 1, 1, 0.8, 1, 1.5])
-    with r2c1:
-        hex_color = st.color_picker("色 / Color", auto_hex)
-    with r2c2:
-        gloss = st.selectbox("艶 / Finish", GLOSS_OPTIONS)
-    with r2c3:
-        order_status_input = st.selectbox("発注状況 / Order", ORDER_OPTIONS)
-    with r2c4:
-        stock = st.number_input("保有数 / Stock", min_value=0.0, max_value=MAX_STOCK, step=STEP)
-    with r2c5:
-        received_date = st.date_input("入荷日 / Received", value=datetime.now().date(), min_value=datetime(1990, 1, 1).date(), max_value=datetime(2040, 12, 31).date())
-    with r2c6:
-        location = st.text_input("保管場所 / Location", placeholder="例: A-1")
-        st.markdown(f"<div style='margin-top:2px;'>{can_display_html(stock, hex_color)}</div>", unsafe_allow_html=True)
+    if view_mode == "manage":
+        st.subheader("在庫入力 / Add or Update Stock")
+        r1c1, r1c2, r1c3, r1c4 = st.columns([1.2, 1.2, 1, 1.5])
+        with r1c1:
+            customer = st.selectbox("得意先 / Customer", customers)
+        with r1c2:
+            paint_type = st.selectbox("種類 / Type", types)
+        with r1c3:
+            number = st.text_input("No / 色番号")
+            number_clean = clean_code(number)
+        with r1c4:
+            name_input = st.text_input("名称 / Name")
+        auto_name, auto_hex, found_color = color_lookup(number_clean, color_df)
+        if number_clean:
+            if found_color:
+                st.success(f"✅ {number_clean} の色を自動表示しました", icon=None)
+            else:
+                st.warning(f"⚠️ {number_clean} は色マスタにありません")
+        name = name_input if name_input else auto_name
+        r2c1, r2c2, r2c3, r2c4, r2c5, r2c6 = st.columns([0.7, 1, 1, 0.8, 1, 1.5])
+        with r2c1:
+            hex_color = st.color_picker("色 / Color", auto_hex)
+        with r2c2:
+            gloss = st.selectbox("艶 / Finish", GLOSS_OPTIONS)
+        with r2c3:
+            order_status_input = st.selectbox("発注状況 / Order", ORDER_OPTIONS)
+        with r2c4:
+            stock = st.number_input("保有数 / Stock", min_value=0.0, max_value=MAX_STOCK, step=STEP)
+        with r2c5:
+            received_date = st.date_input("入荷日 / Received", value=datetime.now().date(), min_value=datetime(1990, 1, 1).date(), max_value=datetime(2040, 12, 31).date())
+        with r2c6:
+            location = st.text_input("保管場所 / Location", placeholder="例: A-1")
+            st.markdown(f"<div style='margin-top:2px;'>{can_display_html(stock, hex_color)}</div>", unsafe_allow_html=True)
 
-    if st.button("追加 / 更新して保存 / Add or Update", type="primary", use_container_width=True):
-        if number_clean == "":
-            st.error("No / 色番号を入力してください / Please enter Color No.")
-        else:
-            before_qty = ""
-            existing_mask = data["No"].apply(clean_code) == number_clean
-            if existing_mask.any():
-                before_qty = data.loc[existing_mask, "保有数"].iloc[0]
-            data = add_or_update_data(
-                data, customer, paint_type, number_clean, name, hex_color, gloss,
-                stock, received_date.strftime("%Y-%m-%d"), location, order_status_input,
-            )
-            save_data(inventory_sheet, data)
-            saved_row = data.loc[data["No"].apply(clean_code) == number_clean].iloc[0]
-            operation = "追加" if before_qty == "" else "更新"
-            diff = "" if before_qty == "" else normalize_stock(stock) - normalize_stock(before_qty)
-            append_history(history_sheet, operation, saved_row, before_qty, stock, diff, "入力フォーム")
-            st.success("保存しました / Saved")
-            st.rerun()
+        if st.button("追加 / 更新して保存 / Add or Update", type="primary", use_container_width=True):
+            if number_clean == "":
+                st.error("No / 色番号を入力してください / Please enter Color No.")
+            else:
+                before_qty = ""
+                existing_mask = data["No"].apply(clean_code) == number_clean
+                if existing_mask.any():
+                    before_qty = data.loc[existing_mask, "保有数"].iloc[0]
+                data = add_or_update_data(
+                    data, customer, paint_type, number_clean, name, hex_color, gloss,
+                    stock, received_date.strftime("%Y-%m-%d"), location, order_status_input,
+                )
+                save_data(inventory_sheet, data)
+                saved_row = data.loc[data["No"].apply(clean_code) == number_clean].iloc[0]
+                operation = "追加" if before_qty == "" else "更新"
+                diff = "" if before_qty == "" else normalize_stock(stock) - normalize_stock(before_qty)
+                append_history(history_sheet, operation, saved_row, before_qty, stock, diff, "入力フォーム")
+                st.success("保存しました / Saved")
+                st.rerun()
 
-    st.divider()
+        st.divider()
 
-    # PC検索
-    sc1, sc2, sc3, sc4, sc5, sc6, sc7 = st.columns([2, 1, 1, 1, 1, 1, 1])
-    with sc1:
-        search = st.text_input("🔍 番号・名称・得意先・種類・場所", placeholder="Search...")
-    with sc2:
-        type_filter = st.selectbox("種類 / Type", ["All／すべて"] + types)
-    with sc3:
-        color_filter = st.selectbox("色系統 / Color", ["All／すべて", "白系", "黒系", "グレー系", "赤系", "オレンジ系", "茶系", "黄系", "緑系", "青系", "紫系", "ピンク系"])
-    with sc4:
-        gloss_filter = st.selectbox("艶 / Finish", ["All／すべて"] + GLOSS_OPTIONS)
-    with sc5:
-        order_filter = st.selectbox("発注状況", ["All／すべて"] + ORDER_OPTIONS)
-    with sc6:
-        location_filter = st.text_input("📍 場所", placeholder="例: A-1")
-    with sc7:
-        sort_mode = st.selectbox("並び替え / Sort", ["色番号順", "保有数順", "得意先順", "種類順", "場所順", "入荷日順"])
+    if view_mode == "search":
+        # PC検索
+        sc1, sc2, sc3, sc4, sc5, sc6, sc7 = st.columns([2, 1, 1, 1, 1, 1, 1])
+        with sc1:
+            search = st.text_input("🔍 番号・名称・得意先・種類・場所", placeholder="Search...")
+        with sc2:
+            type_filter = st.selectbox("種類 / Type", ["All／すべて"] + types)
+        with sc3:
+            color_filter = st.selectbox("色系統 / Color", ["All／すべて", "白系", "黒系", "グレー系", "赤系", "オレンジ系", "茶系", "黄系", "緑系", "青系", "紫系", "ピンク系"])
+        with sc4:
+            gloss_filter = st.selectbox("艶 / Finish", ["All／すべて"] + GLOSS_OPTIONS)
+        with sc5:
+            order_filter = st.selectbox("発注状況", ["All／すべて"] + ORDER_OPTIONS)
+        with sc6:
+            location_filter = st.text_input("📍 場所", placeholder="例: A-1")
+        with sc7:
+            sort_mode = st.selectbox("並び替え / Sort", ["色番号順", "保有数順", "得意先順", "種類順", "場所順", "入荷日順"])
 
 owned = data[data["No"].astype(str).str.strip() != ""].copy()
 
@@ -1236,71 +1265,72 @@ st.divider()
 # =========================
 # 直接テーブル編集
 # =========================
-st.subheader("直接テーブル編集 / Direct Table Edit")
-st.caption("ここで編集して保存すると、Googleスプレッドシートに反映されます。")
+if view_mode == "manage":
+    st.subheader("直接テーブル編集 / Direct Table Edit")
+    st.caption("ここで編集して保存すると、Googleスプレッドシートに反映されます。")
 
-editor_data = data.copy()
-editor_data["入荷日"] = pd.to_datetime(editor_data["入荷日"], errors="coerce").dt.date
+    editor_data = data.copy()
+    editor_data["入荷日"] = pd.to_datetime(editor_data["入荷日"], errors="coerce").dt.date
 
-_esort = st.selectbox("並び替え / Sort", ["色番号順", "入荷日順", "得意先順", "種類順", "保有数順", "場所順"], key="editor_sort")
-_esort_map = {"色番号順": "No", "入荷日順": "入荷日", "得意先順": "得意先", "種類順": "種類", "保有数順": "保有数", "場所順": "保管場所"}
-editor_data = editor_data.sort_values(_esort_map[_esort], na_position="last").reset_index(drop=True)
+    _esort = st.selectbox("並び替え / Sort", ["色番号順", "入荷日順", "得意先順", "種類順", "保有数順", "場所順"], key="editor_sort")
+    _esort_map = {"色番号順": "No", "入荷日順": "入荷日", "得意先順": "得意先", "種類順": "種類", "保有数順": "保有数", "場所順": "保管場所"}
+    editor_data = editor_data.sort_values(_esort_map[_esort], na_position="last").reset_index(drop=True)
 
-edited_data = st.data_editor(
-    editor_data,
-    use_container_width=True,
-    num_rows="dynamic",
-    column_config={
-        "得意先": st.column_config.SelectboxColumn("得意先 / Customer", options=customers),
-        "種類": st.column_config.SelectboxColumn("種類 / Type", options=types),
-        "HEX": st.column_config.TextColumn("HEX / Color Code"),
-        "艶": st.column_config.SelectboxColumn("艶 / Finish", options=GLOSS_OPTIONS),
-        "保有数": st.column_config.NumberColumn("保有数 / Stock", min_value=0.0, max_value=MAX_STOCK, step=STEP),
-        "入荷日": st.column_config.DateColumn("入荷日 / Received Date"),
-        "保管場所": st.column_config.TextColumn("保管場所 / Location"),
-    },
-)
-
-if st.button("テーブル編集を保存 / Save Table Edits", use_container_width=True):
-    edited_data = edited_data.copy()
-    edited_data["入荷日"] = edited_data["入荷日"].apply(lambda x: x.strftime("%Y-%m-%d") if hasattr(x, "strftime") else str(x))
-    save_data(inventory_sheet, edited_data)
-    append_history(
-        history_sheet, "テーブル編集",
-        {"得意先": "", "種類": "", "No": "一括", "名称": "直接テーブル編集"},
-        "", "", "", "直接テーブル編集で保存",
+    edited_data = st.data_editor(
+        editor_data,
+        use_container_width=True,
+        num_rows="dynamic",
+        column_config={
+            "得意先": st.column_config.SelectboxColumn("得意先 / Customer", options=customers),
+            "種類": st.column_config.SelectboxColumn("種類 / Type", options=types),
+            "HEX": st.column_config.TextColumn("HEX / Color Code"),
+            "艶": st.column_config.SelectboxColumn("艶 / Finish", options=GLOSS_OPTIONS),
+            "保有数": st.column_config.NumberColumn("保有数 / Stock", min_value=0.0, max_value=MAX_STOCK, step=STEP),
+            "入荷日": st.column_config.DateColumn("入荷日 / Received Date"),
+            "保管場所": st.column_config.TextColumn("保管場所 / Location"),
+        },
     )
-    st.success("Googleスプレッドシートに保存しました / Saved to Google Sheets.")
-    st.rerun()
 
-st.divider()
+    if st.button("テーブル編集を保存 / Save Table Edits", use_container_width=True):
+        edited_data = edited_data.copy()
+        edited_data["入荷日"] = edited_data["入荷日"].apply(lambda x: x.strftime("%Y-%m-%d") if hasattr(x, "strftime") else str(x))
+        save_data(inventory_sheet, edited_data)
+        append_history(
+            history_sheet, "テーブル編集",
+            {"得意先": "", "種類": "", "No": "一括", "名称": "直接テーブル編集"},
+            "", "", "", "直接テーブル編集で保存",
+        )
+        st.success("Googleスプレッドシートに保存しました / Saved to Google Sheets.")
+        st.rerun()
 
-
-# =========================
-# 履歴表示
-# =========================
-st.subheader("変更履歴 / Change History")
-
-try:
-    history_values = history_sheet.get_all_values()
-    if len(history_values) <= 1:
-        st.info("まだ履歴はありません。 / No history yet.")
-    else:
-        history_df = pd.DataFrame(history_values[1:], columns=history_values[0])
-        history_df = history_df.tail(30).iloc[::-1]
-        st.dataframe(history_df, use_container_width=True, hide_index=True)
-except Exception as e:
-    st.warning("履歴の読み込みに失敗しました。 / Failed to load history.")
-    st.caption(str(e))
-
-st.divider()
+    st.divider()
 
 
-# =========================
-# マスタ管理説明
-# =========================
-with st.expander("⚙️ 得意先マスタ・種類マスタの使い方 / How to Use Master Sheets"):
-    st.write("同じGoogleスプレッドシート内に以下のシートを作成・使用します。")
-    st.write("- 在庫 / 履歴 / 得意先マスタ / 種類マスタ")
-    st.write("得意先マスタ・種類マスタは、A列の見出しを `名称` にして、その下に選択肢を入力してください。")
-    st.write("在庫シートは、必要な列が無い場合でもアプリ側で空欄として扱います。保存時に列が整います。")
+    # =========================
+    # 履歴表示
+    # =========================
+    st.subheader("変更履歴 / Change History")
+
+    try:
+        history_values = history_sheet.get_all_values()
+        if len(history_values) <= 1:
+            st.info("まだ履歴はありません。 / No history yet.")
+        else:
+            history_df = pd.DataFrame(history_values[1:], columns=history_values[0])
+            history_df = history_df.tail(30).iloc[::-1]
+            st.dataframe(history_df, use_container_width=True, hide_index=True)
+    except Exception as e:
+        st.warning("履歴の読み込みに失敗しました。 / Failed to load history.")
+        st.caption(str(e))
+
+    st.divider()
+
+
+    # =========================
+    # マスタ管理説明
+    # =========================
+    with st.expander("⚙️ 得意先マスタ・種類マスタの使い方 / How to Use Master Sheets"):
+        st.write("同じGoogleスプレッドシート内に以下のシートを作成・使用します。")
+        st.write("- 在庫 / 履歴 / 得意先マスタ / 種類マスタ")
+        st.write("得意先マスタ・種類マスタは、A列の見出しを `名称` にして、その下に選択肢を入力してください。")
+        st.write("在庫シートは、必要な列が無い場合でもアプリ側で空欄として扱います。保存時に列が整います。")
