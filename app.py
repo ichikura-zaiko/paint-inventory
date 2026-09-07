@@ -490,8 +490,14 @@ def color_lookup(number, color_df):
 # =========================
 # 在庫読み込み・保存
 # =========================
+@st.cache_data(ttl=60, show_spinner=False)
+def _cached_inventory_values():
+    _ws, _h, _c, _t = get_sheets()
+    return _ws.get_all_values()
+
+
 def load_data(sheet, color_df):
-    values = sheet.get_all_values()
+    values = _cached_inventory_values()
 
     if not values:
         sheet.update([COLUMNS], "A1")
@@ -587,6 +593,10 @@ def save_data(sheet, df):
     sheet.update(_values, "A1")
     try:
         sheet.batch_clear(["A{}:J1000".format(len(_values) + 1)])
+    except Exception:
+        pass
+    try:
+        _cached_inventory_values.clear()
     except Exception:
         pass
 
@@ -730,6 +740,7 @@ if is_mobile:
     with mb1:
         if st.button("🔄 再読み込み / Reload", use_container_width=True):
             load_color_master.clear()
+            _cached_inventory_values.clear()
             st.rerun()
     with mb2:
         if st.button("💻 PC モード / PC Mode", use_container_width=True):
@@ -746,6 +757,7 @@ else:
     with top4:
         if st.button("🔄 再読み込み / Reload", use_container_width=True):
             load_color_master.clear()
+            _cached_inventory_values.clear()
             st.rerun()
     with top5:
         if st.button("📱 スマホモード", use_container_width=True):
