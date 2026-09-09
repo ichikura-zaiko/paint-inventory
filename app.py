@@ -747,22 +747,53 @@ if is_mobile:
             st.session_state["mobile_mode"] = False
             st.rerun()
 else:
-    top1, top2, top3, top4, top5 = st.columns([1, 1, 1, 1, 1])
-    with top1:
-        st.metric("登録件数 / Items", len(data))
-    with top2:
-        st.metric("総保有数 / Total Stock", f"{data['保有数'].sum():g}")
-    with top3:
-        st.metric("発注中 / Ordering", order_count)
-    with top4:
-        if st.button("🔄 再読み込み / Reload", use_container_width=True):
+    # ===== KPIカード（画像デザイン） =====
+    out_count = int((data["保有数"].apply(normalize_stock) == 0).sum())
+    expiry_count = 0
+    for _, _r in data.iterrows():
+        _txt, _col = expiry_info(_r.get("入荷日", ""), _r.get("種類", ""))
+        if _col in ("#dc2626", "#d97706"):
+            expiry_count += 1
+    total_stock_val = data["保有数"].sum()
+
+    # 上部ボタン（右上に配置）
+    _bsp, _brl, _bsm = st.columns([6, 1.3, 1.3])
+    with _brl:
+        if st.button("🔄 再読み込み", use_container_width=True):
             load_color_master.clear()
             _cached_inventory_values.clear()
             st.rerun()
-    with top5:
-        if st.button("📱 スマホモード", use_container_width=True):
+    with _bsm:
+        if st.button("📱 スマホ表示", use_container_width=True):
             st.session_state["mobile_mode"] = True
             st.rerun()
+
+    def _kpi_card(icon, label, value, unit, value_color, label_color):
+        return (
+            "<div style='flex:1;background:#ffffff;border:1px solid #e4e6eb;border-radius:10px;"
+            "padding:12px 16px;display:flex;align-items:center;gap:12px;min-width:0;'>"
+            f"<span style='font-size:26px;line-height:1;'>{icon}</span>"
+            "<div style='min-width:0;'>"
+            f"<div style='font-size:12px;color:{label_color};white-space:nowrap;'>{label}</div>"
+            f"<div style='font-size:24px;font-weight:800;line-height:1.15;color:{value_color};'>{value}"
+            f"<span style='font-size:12px;font-weight:600;color:#5f6b7a;margin-left:2px;'>{unit}</span></div>"
+            "</div></div>"
+        )
+
+    _order_color = "#e37400" if order_count > 0 else "#1c1e21"
+    _out_color = "#d93025" if out_count > 0 else "#1c1e21"
+    _exp_color = "#e37400" if expiry_count > 0 else "#1c1e21"
+    _cards = "".join([
+        _kpi_card("🎨", "登録塗料 / Items", len(data), "種類", "#1c1e21", "#5f6b7a"),
+        _kpi_card("📦", "総在庫 / Total Stock", f"{total_stock_val:g}", "缶", "#188038", "#5f6b7a"),
+        _kpi_card("🛒", "発注中 / Ordering", order_count, "件", _order_color, "#5f6b7a"),
+        _kpi_card("⚠️", "在庫切れ / Out", out_count, "件", _out_color, "#d93025" if out_count > 0 else "#5f6b7a"),
+        _kpi_card("❗", "期限注意 / Expiring", expiry_count, "件", _exp_color, "#e37400" if expiry_count > 0 else "#5f6b7a"),
+    ])
+    st.markdown(
+        f"<div style='display:flex;gap:12px;margin-bottom:6px;'>{_cards}</div>",
+        unsafe_allow_html=True,
+    )
 
 gray_rows = data[data["HEX"].astype(str).str.upper().isin(DEFAULT_GRAY_VALUES)].copy()
 if not is_mobile and len(gray_rows) > 0:
