@@ -1005,6 +1005,28 @@ if type_filter != "All／すべて":
 if color_filter != "All／すべて":
     owned = owned[owned["HEX"].apply(color_family) == color_filter]
 
+# 色系統グループ（画像デザインの左ナビ用・5グループに集約）
+def family_group(hex_color):
+    _f = color_family(hex_color)
+    if _f == "白系":
+        return "白・クリア"
+    if _f in ("黒系", "グレー系"):
+        return "黒・グレー"
+    if _f in ("赤系", "オレンジ系"):
+        return "赤・オレンジ"
+    if _f in ("青系", "緑系"):
+        return "青・緑"
+    return "その他"
+
+_famf = st.session_state.get("fam_filter", "all")
+if _famf == "在庫切れ":
+    owned = owned[owned["保有数"].apply(normalize_stock) == 0]
+elif _famf == "期限注意":
+    _keep = [i for i, r in owned.iterrows() if expiry_info(r.get("入荷日", ""), r.get("種類", ""))[1] in ("#dc2626", "#d97706")]
+    owned = owned.loc[_keep]
+elif _famf in ("白・クリア", "黒・グレー", "赤・オレンジ", "青・緑", "その他"):
+    owned = owned[owned["HEX"].apply(family_group) == _famf]
+
 if sort_mode in ["色番号順", "色番号順 / No."]:
     owned = owned.sort_values("No")
 elif sort_mode in ["保有数順", "保有数順 / Stock"]:
@@ -1253,54 +1275,103 @@ elif is_mobile:
         render_card_buttons(idx, row, qty)
         st.markdown("<div style='margin:2px 0;'></div>", unsafe_allow_html=True)
 else:
-    # ===== PC：2カラムレイアウト =====
-    left, right = st.columns([2, 1])
-    with left:
-        for idx, row in owned.iterrows():
-            display_hex = normalize_hex(row["HEX"])
-            expiry_text, expiry_color = expiry_info(row.get("入荷日",""), row.get("種類",""))
-            qty = normalize_stock(row["保有数"])
-            location_text = str(row.get("保管場所","")).strip() or "No Location"
-            gloss_text = str(row.get("艶","")).strip() or "No Finish"
-            order_status = str(row.get("発注状況","")).strip()
-            order_badge_html = ""
-            if order_status and order_status in ORDER_BADGE_COLOR:
-                bg = ORDER_BADGE_COLOR[order_status]
-                order_badge_html = f'<span class="order-badge" style="background:{bg};">📦 {order_status}</span>'
-            st.markdown(
-                f"""<div class="paint-card"><div class="paint-card-inner">
-                    <div class="paint-chip" style="background-color:{display_hex};"></div>
-                    <div class="paint-info">
-                        <span style="font-size:11px;color:#6b7280;">{row['得意先']} / {row['種類']}</span><br>
-                        <span class="paint-no-name">{row['No']}　{row['名称']}</span><br>
-                        <span class="badge">{gloss_text}</span>
-                        <span class="badge" style="color:{expiry_color};">📅 {row.get('入荷日','')} ｜ {expiry_text}</span>
-                        <span class="badge">📍 {location_text}</span>
-                        {order_badge_html}<br>
-                        {can_display_html(qty, display_hex)}
-                        <span style="font-size:15px;margin-left:8px;">{qty:g} {unit_label(qty)}</span>
-                    </div></div></div>""",
-                unsafe_allow_html=True,
-            )
-            render_card_buttons(idx, row, qty)
-    with right:
-        st.subheader("カラー一覧 / Colors")
-        for _, row in owned.iterrows():
-            display_hex = normalize_hex(row["HEX"])
-            qty = normalize_stock(row["保有数"])
-            order_st = str(row.get("発注状況","")).strip()
-            order_dot = f' <span style="color:{ORDER_BADGE_COLOR.get(order_st,"#999")};font-size:10px;">●{order_st}</span>' if order_st else ""
-            st.markdown(
-                f"""<div class="small-color-row">
-                    <div class="small-color-chip" style="background-color:{display_hex};"></div>
-                    <div style="font-size:12px;">{row['No']}　{row['名称']}　<b>{qty:g}</b> {unit_label(qty)}{order_dot}<br>
-                    <span style="color:#6b7280;font-size:11px;">📍 {row.get('保管場所','')}</span></div>
-                </div>""",
-                unsafe_allow_html=True,
-            )
-        st.divider()
-        st.metric("保有色数 / Colors", len(owned))
-        st.metric("保有数量 / Quantity", f"{owned['保有数'].sum():g}")
+    # ===== 色系統サイドバー（画像デザインの左ナビ） =====
+    FAM_ORDER = ["白・クリア", "黒・グレー", "赤・オレンジ", "青・緑", "その他"]
+    FAM_DOT = {"白・クリア": "#f2f1ec", "黒・グレー": "#4a4f55", "赤・オレンジ": "#c0392b", "青・緑": "#2e6da4", "その他": "#b3a58c"}
+    _alld = data[data["No"].astype(str).str.strip() != ""]
+    _fam_counts = {f: 0 for f in FAM_ORDER}
+    for _h in _alld["HEX"]:
+        _g = family_group(_h)
+        if _g in _fam_counts:
+            _fam_counts[_g] += 1
+    _out_cnt = int((_alld["保有数"].apply(normalize_stock) == 0).sum())
+    _exp_cnt = sum(1 for _i, _r in _alld.iterrows() if expiry_info(_r.get("入荷日", ""), _r.get("種類", ""))[1] in ("#dc2626", "#d97706"))
+    _cur = st.session_state.get("fam_filter", "all")
+
+    def _fam_button(label, key):
+        _type = "primary" if _cur == key else "secondary"
+        if st.sidebar.button(label, key=f"fambtn_{key}", use_container_width=True, type=_type):
+            st.session_state["fam_filter"] = key
+            st.rerun()
+
+    st.sidebar.markdown("### 🎨 色系統 / Color")
+    _fam_button(f"▦　すべて（{len(_alld)}）", "all")
+    for _f in FAM_ORDER:
+        _fam_button(f"●　{_f}（{_fam_counts[_f]}）", _f)
+    st.sidebar.markdown("---")
+    _fam_button(f"⚠️　在庫切れ（{_out_cnt}）", "在庫切れ")
+    _fam_button(f"❗　期限注意（{_exp_cnt}）", "期限注意")
+
+    # ===== 検索結果ヘッダー + カード/リスト切替 =====
+    _hc1, _hc2, _hc3 = st.columns([3, 1, 1])
+    with _hc1:
+        _fam_label = "" if _cur in ("all", None) else f"　（絞り込み: {_cur}）"
+        st.markdown(f"##### 検索結果 {len(owned)} 件{_fam_label}")
+    _style = st.session_state.get("pc_list_style", "card")
+    with _hc2:
+        if st.button("▦ カード表示", use_container_width=True, type=("primary" if _style == "card" else "secondary")):
+            st.session_state["pc_list_style"] = "card"
+            st.rerun()
+    with _hc3:
+        if st.button("☰ リスト表示", use_container_width=True, type=("primary" if _style == "list" else "secondary")):
+            st.session_state["pc_list_style"] = "list"
+            st.rerun()
+
+    if len(owned) == 0:
+        st.info("該当する在庫データがありません。")
+    elif _style == "list":
+        _disp = owned[["No", "名称", "得意先", "種類", "艶", "保管場所", "保有数", "発注状況"]].copy()
+        _disp = _disp.rename(columns={"得意先": "メーカー", "保有数": "在庫数(缶)"})
+        st.dataframe(_disp, use_container_width=True, hide_index=True)
+    else:
+        _rows = list(owned.iterrows())
+        for _i in range(0, len(_rows), 2):
+            _cols = st.columns(2)
+            for _j, _cell in enumerate(_cols):
+                if _i + _j >= len(_rows):
+                    break
+                idx, row = _rows[_i + _j]
+                with _cell:
+                    display_hex = normalize_hex(row["HEX"])
+                    expiry_text, expiry_color = expiry_info(row.get("入荷日", ""), row.get("種類", ""))
+                    qty = normalize_stock(row["保有数"])
+                    location_text = str(row.get("保管場所", "")).strip() or "—"
+                    gloss_text = str(row.get("艶", "")).strip() or "—"
+                    maker_text = str(row.get("得意先", "")).strip() or "—"
+                    type_text = str(row.get("種類", "")).strip() or "—"
+                    exp_date = str(row.get("入荷日", ""))
+                    order_status = str(row.get("発注状況", "")).strip()
+                    order_badge_html = ""
+                    if order_status and order_status in ORDER_BADGE_COLOR:
+                        order_badge_html = f'<div style="margin-top:5px;"><span style="background:{ORDER_BADGE_COLOR[order_status]};color:#fff;border-radius:999px;padding:2px 10px;font-size:11px;font-weight:600;">📦 {order_status}</span></div>'
+                    stock_color = "#d93025" if qty == 0 else "#1c1e21"
+                    cans_html = can_display_html(qty, display_hex)
+                    st.markdown(
+                        f"""<div style="background:#fff;border:1px solid #e4e6eb;border-radius:12px;padding:14px 16px;margin-bottom:6px;">
+  <div style="display:flex;gap:14px;align-items:flex-start;">
+    <div style="width:76px;height:60px;border-radius:8px;border:1px solid rgba(0,0,0,.12);background:{display_hex};flex:0 0 auto;"></div>
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:12px;color:#5f6b7a;font-weight:700;">{row['No']}</div>
+      <div style="font-size:17px;font-weight:800;line-height:1.3;word-break:break-all;">{row['名称']}</div>
+      <div style="margin-top:5px;font-size:12.5px;color:#5f6b7a;display:grid;grid-template-columns:auto 1fr;gap:2px 10px;">
+        <span>メーカー</span><span style="color:#1c1e21;">{maker_text}</span>
+        <span>種類</span><span style="color:#1c1e21;">{type_text}</span>
+        <span>艶</span><span style="color:#1c1e21;">{gloss_text}</span>
+        <span>保管場所</span><span style="color:#2563eb;">{location_text}</span>
+        <span>有効期限</span><span style="color:{expiry_color};">{exp_date} ｜ {expiry_text}</span>
+      </div>
+      <div style="margin-top:6px;font-size:12px;color:#5f6b7a;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">缶残量 {cans_html}</div>{order_badge_html}
+    </div>
+    <div style="text-align:right;flex:0 0 auto;">
+      <div style="font-size:11px;color:#5f6b7a;">在庫数</div>
+      <div style="font-size:26px;font-weight:800;color:{stock_color};">{qty:g}<span style="font-size:13px;font-weight:700;"> 缶</span></div>
+    </div>
+  </div>
+</div>""",
+                        unsafe_allow_html=True,
+                    )
+                    render_card_buttons(idx, row, qty)
+
 
 st.divider()
 
