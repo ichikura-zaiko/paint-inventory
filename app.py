@@ -797,8 +797,31 @@ else:
 
 gray_rows = data[data["HEX"].astype(str).str.upper().isin(DEFAULT_GRAY_VALUES)].copy()
 if not is_mobile and len(gray_rows) > 0:
-    with st.expander(f"⚠️ 色がグレーのデータ / Gray Color Data ({len(gray_rows)}件)"):
-        st.dataframe(gray_rows[["No", "名称", "HEX", "保有数", "保管場所"]], use_container_width=True)
+    with st.expander(f"⚠️ 色がグレーのデータ / Gray Color Data ({len(gray_rows)}件) ｜ 色をクリックして登録できます"):
+        st.caption("各行の色見本をクリックして実際の色を選び、「保存」を押すと登録されます。 / Pick a color and press Save.")
+        _gh1, _gh2, _gh3, _gh4, _gh5 = st.columns([1.4, 3, 1.2, 1.1, 1])
+        _gh1.markdown("**No**")
+        _gh2.markdown("**名称**")
+        _gh3.markdown("**色を選ぶ**")
+        _gh4.markdown("**保管場所**")
+        _gh5.markdown("**保存**")
+        for _gidx, _grow in gray_rows.iterrows():
+            _c1, _c2, _c3, _c4, _c5 = st.columns([1.4, 3, 1.2, 1.1, 1])
+            _c1.markdown(f"`{_grow['No']}`")
+            _c2.markdown(str(_grow["名称"]))
+            with _c3:
+                _newhex = st.color_picker("色", value="#999999", key=f"grayhex_{_gidx}", label_visibility="collapsed")
+            _c4.markdown(str(_grow.get("保管場所", "")))
+            with _c5:
+                if st.button("保存", key=f"graysave_{_gidx}", use_container_width=True):
+                    if str(_newhex).upper() in DEFAULT_GRAY_VALUES:
+                        st.warning("グレー以外の色を選んでください。")
+                    else:
+                        data.loc[_gidx, "HEX"] = str(_newhex).upper()
+                        save_data(inventory_sheet, data)
+                        append_history(history_sheet, "色登録", data.loc[_gidx], "", "", "", f"HEX={str(_newhex).upper()}")
+                        st.success(f"{_grow['No']} の色を登録しました。")
+                        st.rerun()
 
 if not is_mobile:
     st.divider()
