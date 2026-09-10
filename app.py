@@ -189,8 +189,8 @@ st.markdown(
         gap:6px; margin-top:6px;
     }
     /* 画面幅判定コンポーネントのiframeを隠す */
-    iframe[title*="streamlit_js_eval"] { display: none !important; }
-    [data-testid="stElementContainer"]:has(iframe[title*="streamlit_js_eval"]) { display: none !important; height: 0 !important; margin: 0 !important; }
+    iframe[title*="streamlit_js_eval"] { height: 0 !important; min-height: 0 !important; border: 0 !important; }
+    [data-testid="stElementContainer"]:has(iframe[title*="streamlit_js_eval"]) { height: 0 !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important; }
     </style>
     """,
     unsafe_allow_html=True,
