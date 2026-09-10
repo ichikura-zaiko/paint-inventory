@@ -57,6 +57,17 @@ if "mobile_mode" not in st.session_state:
     st.session_state["mobile_mode"] = False
 is_mobile = st.session_state["mobile_mode"]
 
+# --- UA判定：スマホ端末なら自動でスマホ表示（初回のみ・失敗時はPC表示のまま） ---
+if not st.session_state.get("_auto_mode_checked"):
+    st.session_state["_auto_mode_checked"] = True
+    try:
+        _ua = st.context.headers.get("User-Agent", "")
+    except Exception:
+        _ua = ""
+    if any(_k in _ua for _k in ["Mobile", "Android", "iPhone", "iPad", "iPod"]):
+        st.session_state["mobile_mode"] = True
+        is_mobile = True
+
 
 # =========================
 # 看板ヘッダー
