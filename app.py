@@ -223,6 +223,11 @@ if is_mobile:
         [data-testid="stExpander"] { background: linear-gradient(160deg,#13223a,#0f1c30) !important; border: 1px solid rgba(120,160,220,0.2) !important; border-radius: 16px !important; }
         [data-testid="stExpander"] summary { color: #dbe8fb !important; font-weight: 700 !important; }
         [data-testid="stExpander"] summary svg { fill: #9fb6d6 !important; }
+        .stTextInput .react-aria-TextField > div { background: #0b1626 !important; border: 1px solid rgba(120,160,220,0.28) !important; border-radius: 12px !important; }
+        .stTextInput .react-aria-TextField input { background: transparent !important; color: #eaf1fb !important; }
+        [data-testid="stSelectbox"] [role="group"] { background: #0b1626 !important; border: 1px solid rgba(120,160,220,0.28) !important; border-radius: 12px !important; }
+        [data-testid="stSelectbox"] [role="group"] * { color: #eaf1fb !important; }
+        [data-testid="stSelectbox"] [role="combobox"] { color: #eaf1fb !important; }
         </style>
         """,
         unsafe_allow_html=True,
