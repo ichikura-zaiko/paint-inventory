@@ -904,12 +904,12 @@ if is_mobile:
     search = st.text_input("🔍 番号・名称・場所 / Search", value=_default_search, placeholder="No. / Name / Location...", label_visibility="collapsed")
     sf1, sf2 = st.columns(2)
     with sf1:
-        type_filter = st.selectbox("カテゴリ / Type", ["All／すべて"] + types, label_visibility="collapsed")
+        type_filter = st.selectbox("カテゴリ", ["All／すべて"] + types)
     with sf2:
-        sort_mode = st.selectbox("並び替え / Sort", ["色番号順 / No.", "保有数順 / Stock", "場所順 / Location", "入荷日順 / Date"], label_visibility="collapsed")
+        color_filter = st.selectbox("色系統", ["All／すべて", "白系", "黒系", "グレー系", "赤系", "オレンジ系", "茶系", "黄系", "緑系", "青系", "紫系", "ピンク系"])
+    sort_mode = st.selectbox("並び順", ["色番号順 / No.", "保有数順 / Stock", "場所順 / Location", "入荷日順 / Date"])
     gloss_filter = "All／すべて"
     location_filter = ""
-    color_filter = "All／すべて"
 
     # 在庫入力は折りたたみ
     with st.expander("➕ 在庫を追加・更新する / Add or Update Stock"):
@@ -1065,7 +1065,7 @@ if location_filter:
     owned = owned[owned["保管場所"].astype(str).apply(clean_code).str.contains(lf, na=False)]
 
 if type_filter != "All／すべて":
-    owned = owned[owned["種類"].astype(str) == type_filter]
+    owned = owned[owned["種類"].astype(str).str.startswith(type_filter)]
 if color_filter != "All／すべて":
     owned = owned[owned["HEX"].apply(color_family) == color_filter]
 
