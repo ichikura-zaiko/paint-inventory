@@ -220,6 +220,9 @@ if is_mobile:
         [data-testid="stSelectbox"] [role="group"] { background: #0b1626 !important; border: 1px solid rgba(120,160,220,0.28) !important; border-radius: 12px !important; }
         [data-testid="stSelectbox"] [role="group"] * { color: #eaf1fb !important; }
         [data-testid="stSelectbox"] [role="combobox"] { color: #eaf1fb !important; }
+        [data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"]:nth-of-type(3)) { flex-wrap: nowrap !important; gap: 8px !important; align-items: center !important; }
+        [data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"]:nth-of-type(3)) > [data-testid="stColumn"] { min-width: 0 !important; }
+        [data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"]:nth-of-type(3)) .stButton > button { min-height: 44px !important; font-size: 0.8rem !important; padding: 6px 4px !important; white-space: nowrap !important; }
         </style>
         """,
         unsafe_allow_html=True,
