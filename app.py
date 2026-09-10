@@ -9,6 +9,11 @@ import qrcode
 import io
 import base64
 from datetime import datetime, timedelta
+try:
+    from streamlit_js_eval import streamlit_js_eval
+    _HAS_JS_EVAL = True
+except Exception:
+    _HAS_JS_EVAL = False
 
 
 # =========================
@@ -56,6 +61,15 @@ DEFAULT_GRAY_VALUES = {"", "#999999", "#929396"}
 if "mobile_mode" not in st.session_state:
     st.session_state["mobile_mode"] = False
 is_mobile = st.session_state["mobile_mode"]
+
+# --- 画面幅で自動判定：スマホ幅なら自動でスマホ表示（初回のみ・失敗時はPC表示のまま） ---
+if not st.session_state.get("_auto_mode_checked") and _HAS_JS_EVAL:
+    _win_w = streamlit_js_eval(js_expressions="window.innerWidth", key="auto_screen_w")
+    if _win_w is not None:
+        st.session_state["_auto_mode_checked"] = True
+        if _win_w < 768 and not st.session_state["mobile_mode"]:
+            st.session_state["mobile_mode"] = True
+            is_mobile = True
 
 
 # =========================
