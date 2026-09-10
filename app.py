@@ -62,15 +62,7 @@ is_mobile = st.session_state["mobile_mode"]
 # 看板ヘッダー
 # =========================
 if is_mobile:
-    st.markdown(
-        """
-        <div style="background:linear-gradient(90deg,#1e3a5f,#2e6da4);padding:6px 12px;border-radius:8px;margin-bottom:4px;display:flex;align-items:center;gap:8px;">
-            <span style="font-size:1.3rem;">🎨</span>
-            <div style="color:#ffffff;font-size:1.1rem;font-weight:700;letter-spacing:1px;">一倉　塗料管理システム</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    pass
 else:
     st.markdown(
         """
@@ -750,6 +742,18 @@ order_count = len(data[data["発注状況"].astype(str).str.strip().isin(["発�
 if is_mobile:
     # スマホ：HTMLで横並びメトリクス表示
     total_stock = data["保有数"].sum()
+    _hc1, _hc2, _hc3 = st.columns([4, 1.2, 1.2])
+    with _hc1:
+        st.markdown("<div style='display:flex;align-items:center;gap:8px;padding-top:4px;'><span style='font-size:26px;'>🎨</span><span style='font-size:22px;font-weight:800;color:#ffffff;'>一倉 塗料管理</span></div>", unsafe_allow_html=True)
+    with _hc2:
+        if st.button("🔄 更新", use_container_width=True, key="m_reload_top"):
+            load_color_master.clear()
+            _cached_inventory_values.clear()
+            st.rerun()
+    with _hc3:
+        if st.button("💻 PC", use_container_width=True, key="m_pc_top"):
+            st.session_state["mobile_mode"] = False
+            st.rerun()
     st.markdown(
         f"""<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
             <div style="background:linear-gradient(160deg,#16253d,#101d31);border:1px solid rgba(120,160,220,0.18);border-radius:16px;padding:12px 6px;text-align:center;">
@@ -767,16 +771,6 @@ if is_mobile:
         </div>""",
         unsafe_allow_html=True,
     )
-    mb1, mb2 = st.columns(2)
-    with mb1:
-        if st.button("🔄 再読み込み / Reload", use_container_width=True):
-            load_color_master.clear()
-            _cached_inventory_values.clear()
-            st.rerun()
-    with mb2:
-        if st.button("💻 PC モード / PC Mode", use_container_width=True):
-            st.session_state["mobile_mode"] = False
-            st.rerun()
 else:
     # ===== KPIカード（画像デザイン） =====
     out_count = int((data["保有数"].apply(normalize_stock) == 0).sum())
@@ -893,12 +887,11 @@ if is_mobile:
     search = st.text_input("🔍 番号・名称・場所 / Search", value=_default_search, placeholder="No. / Name / Location...", label_visibility="collapsed")
     sf1, sf2 = st.columns(2)
     with sf1:
-        order_filter = st.selectbox("発注状況", ["All／すべて"] + ORDER_OPTIONS, label_visibility="collapsed")
+        type_filter = st.selectbox("カテゴリ / Type", ["All／すべて"] + types, label_visibility="collapsed")
     with sf2:
         sort_mode = st.selectbox("並び替え / Sort", ["色番号順 / No.", "保有数順 / Stock", "場所順 / Location", "入荷日順 / Date"], label_visibility="collapsed")
     gloss_filter = "All／すべて"
     location_filter = ""
-    type_filter = "All／すべて"
     color_filter = "All／すべて"
 
     # 在庫入力は折りたたみ
@@ -1097,7 +1090,10 @@ elif sort_mode in ["入荷日順", "入荷日順 / Date"]:
 # =========================
 # 保有リスト（スマホ/PC分岐）
 # =========================
-st.subheader("保有リスト / Stock List")
+if is_mobile:
+    st.markdown(f"<div style='display:flex;align-items:baseline;justify-content:space-between;margin:8px 0 10px;'><span style='font-size:22px;font-weight:800;color:#ffffff;'>保有リスト</span><span style='font-size:14px;color:#9fb6d6;'>全 {len(owned)} 件</span></div>", unsafe_allow_html=True)
+else:
+    st.subheader("保有リスト / Stock List")
 
 def render_card_buttons(idx, row, qty):
     """＋−ボタン・編集・QR・削除の共通ロジック"""
