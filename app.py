@@ -202,6 +202,33 @@ st.markdown(
 )
 
 
+if is_mobile:
+    st.markdown(
+        """
+        <style>
+        [data-testid="stAppViewContainer"], .stApp, [data-testid="stHeader"], [data-testid="stToolbar"] { background: #0a1424 !important; }
+        [data-testid="stHeader"] { background: transparent !important; }
+        .block-container { background: transparent !important; }
+        .stApp h1, .stApp h2, .stApp h3 { color: #ffffff !important; }
+        [data-testid="stWidgetLabel"], .stSelectbox label, .stTextInput label, .stNumberInput label, .stDateInput label, .stColorPicker label { color: #cfe0f7 !important; }
+        .stTextInput input, .stNumberInput input { background: #0b1626 !important; color: #eaf1fb !important; border: 1px solid rgba(120,160,220,0.28) !important; border-radius: 12px !important; }
+        .stTextInput input::placeholder { color: #6f88a8 !important; }
+        [data-baseweb="select"] > div { background: #0b1626 !important; border: 1px solid rgba(120,160,220,0.28) !important; border-radius: 12px !important; }
+        [data-baseweb="select"] div, [data-baseweb="select"] span { color: #eaf1fb !important; }
+        [data-baseweb="select"] svg { fill: #9fb6d6 !important; }
+        .stButton > button { min-height: 54px !important; height: auto !important; font-size: 1.05rem !important; font-weight: 700 !important; border-radius: 15px !important; line-height: 1.2 !important; padding: 10px 14px !important; }
+        .stButton button[kind="primary"] { background: linear-gradient(180deg,#2f7cf6,#1e5fd6) !important; color: #ffffff !important; border: none !important; box-shadow: 0 6px 18px rgba(35,100,230,0.35) !important; }
+        .stButton button[kind="secondary"] { background: rgba(30,60,110,0.30) !important; border: 1px solid rgba(90,150,240,0.5) !important; color: #dbe8fb !important; }
+        @media screen and (max-width: 768px) { .stButton > button { min-height: 54px !important; height: auto !important; font-size: 1.0rem !important; } }
+        [data-testid="stExpander"] { background: linear-gradient(160deg,#13223a,#0f1c30) !important; border: 1px solid rgba(120,160,220,0.2) !important; border-radius: 16px !important; }
+        [data-testid="stExpander"] summary { color: #dbe8fb !important; font-weight: 700 !important; }
+        [data-testid="stExpander"] summary svg { fill: #9fb6d6 !important; }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 # =========================
 # 共通関数
 # =========================
@@ -719,19 +746,18 @@ if is_mobile:
     # スマホ：HTMLで横並びメトリクス表示
     total_stock = data["保有数"].sum()
     st.markdown(
-        f"""<div style="display:flex;gap:0;margin-bottom:4px;background:#f8fafc;
-                border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
-            <div style="flex:1;text-align:center;padding:5px 2px;border-right:1px solid #e2e8f0;">
-                <div style="font-size:0.6rem;color:#64748b;">件数 / Items</div>
-                <div style="font-size:1.1rem;font-weight:700;line-height:1.2;">{len(data)}</div>
+        f"""<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
+            <div style="background:linear-gradient(160deg,#16253d,#101d31);border:1px solid rgba(120,160,220,0.18);border-radius:16px;padding:12px 6px;text-align:center;">
+                <div style="font-size:12px;color:#9fb6d6;margin-bottom:6px;">📦 品目数</div>
+                <div style="font-size:26px;font-weight:800;color:#ffffff;line-height:1;">{len(data)}</div>
             </div>
-            <div style="flex:1;text-align:center;padding:5px 2px;border-right:1px solid #e2e8f0;">
-                <div style="font-size:0.6rem;color:#64748b;">総保有数 / Stock</div>
-                <div style="font-size:1.1rem;font-weight:700;line-height:1.2;">{total_stock:g}</div>
+            <div style="background:linear-gradient(160deg,#16253d,#101d31);border:1px solid rgba(120,160,220,0.18);border-radius:16px;padding:12px 6px;text-align:center;">
+                <div style="font-size:12px;color:#9fb6d6;margin-bottom:6px;">🗄️ 総在庫数</div>
+                <div style="font-size:26px;font-weight:800;color:#ffffff;line-height:1;">{total_stock:g}</div>
             </div>
-            <div style="flex:1;text-align:center;padding:5px 2px;">
-                <div style="font-size:0.6rem;color:#64748b;">発注中 / Order</div>
-                <div style="font-size:1.1rem;font-weight:700;line-height:1.2;color:{"#f59e0b" if order_count > 0 else "#1e293b"};">{order_count}</div>
+            <div style="background:linear-gradient(160deg,#16253d,#101d31);border:1px solid rgba(120,160,220,0.18);border-radius:16px;padding:12px 6px;text-align:center;">
+                <div style="font-size:12px;color:#9fb6d6;margin-bottom:6px;">🛒 発注中</div>
+                <div style="font-size:26px;font-weight:800;color:{"#f5a623" if order_count > 0 else "#ffffff"};line-height:1;">{order_count}</div>
             </div>
         </div>""",
         unsafe_allow_html=True,
@@ -1078,14 +1104,14 @@ def render_card_buttons(idx, row, qty):
         # HTMLボタン＋JavaScriptでquery_paramsを書き換えてStreamlitに通知
         btn_style = (
             "display:inline-block;flex:1;text-align:center;padding:5px 2px;"
-            "background:#f1f5f9;border:1px solid #cbd5e1;border-radius:7px;"
-            "font-size:13px;font-weight:600;color:#1e293b;cursor:pointer;"
+            "background:#e8f1ff;border:none;border-radius:12px;"
+            "font-size:17px;font-weight:800;color:#1c5bd0;cursor:pointer;"
             "text-decoration:none;line-height:1.3;"
         )
         btn_red = (
             "display:inline-block;flex:1;text-align:center;padding:5px 2px;"
-            "background:#fee2e2;border:1px solid #fca5a5;border-radius:7px;"
-            "font-size:13px;font-weight:600;color:#991b1b;cursor:pointer;"
+            "background:#ffe9e9;border:none;border-radius:12px;"
+            "font-size:17px;font-weight:800;color:#d23c3c;cursor:pointer;"
             "text-decoration:none;line-height:1.3;"
         )
         btn_gray = (
@@ -1287,7 +1313,7 @@ elif is_mobile:
       <div style="font-size:17px;font-weight:700;line-height:1.2;">{row["No"]}　{row["名称"]}</div>
       <div style="font-size:11px;color:#64748b;margin-top:2px;">{row["種類"]} / {gloss_text} / 📍{location_text}</div>
       <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
-        <span style="font-size:18px;font-weight:700;color:#1e3a5f;">{qty:g} {unit_label(qty)}</span>
+        <span style="font-size:22px;font-weight:800;color:#17233b;">{qty:g}缶</span>
         {cans_html}
       </div>
       <div style="margin-top:3px;font-size:11px;color:{expiry_color};">📅 {expiry_text}{order_extra}</div>
