@@ -851,8 +851,8 @@ else:
 
     def _kpi_card(icon, label, value, unit, value_color, label_color):
         return (
-            "<div style='flex:1;background:#ffffff;border:1px solid #e4e6eb;border-radius:10px;"
-            "padding:12px 16px;display:flex;align-items:center;gap:12px;min-width:0;'>"
+            "<div style='flex:1 1 150px;background:#ffffff;border:1px solid #e4e6eb;border-radius:10px;"
+            "padding:12px 16px;display:flex;align-items:center;gap:12px;min-width:150px;'>"
             f"<span style='font-size:26px;line-height:1;'>{icon}</span>"
             "<div style='min-width:0;'>"
             f"<div style='font-size:12px;color:{label_color};white-space:nowrap;'>{label}</div>"
@@ -868,11 +868,11 @@ else:
         _kpi_card("🎨", "登録塗料 / Items", len(data), "種類", "#1c1e21", "#5f6b7a"),
         _kpi_card("📦", "総在庫 / Total Stock", f"{total_stock_val:g}", "缶", "#188038", "#5f6b7a"),
         _kpi_card("🛒", "発注中 / Ordering", order_count, "件", _order_color, "#5f6b7a"),
-        f'<a href="?af=out" style="flex:1;text-decoration:none;display:flex;">{_kpi_card("⚠️", "在庫切れ / Out", out_count, "件", _out_color, "#d93025" if out_count > 0 else "#5f6b7a")}</a>',
-        f'<a href="?af=expiry" style="flex:1;text-decoration:none;display:flex;">{_kpi_card("❗", "期限注意 / Expiring", expiry_count, "件", _exp_color, "#e37400" if expiry_count > 0 else "#5f6b7a")}</a>',
+        f'<a href="?af=out" style="flex:1 1 150px;min-width:150px;text-decoration:none;display:flex;">{_kpi_card("⚠️", "在庫切れ / Out", out_count, "件", _out_color, "#d93025" if out_count > 0 else "#5f6b7a")}</a>',
+        f'<a href="?af=expiry" style="flex:1 1 150px;min-width:150px;text-decoration:none;display:flex;">{_kpi_card("❗", "期限注意 / Expiring", expiry_count, "件", _exp_color, "#e37400" if expiry_count > 0 else "#5f6b7a")}</a>',
     ])
     st.markdown(
-        f"<div style='display:flex;gap:12px;margin-bottom:6px;'>{_cards}</div>",
+        f"<div style='display:flex;flex-wrap:wrap;gap:12px;margin-bottom:6px;'>{_cards}</div>",
         unsafe_allow_html=True,
     )
 
