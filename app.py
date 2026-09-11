@@ -169,6 +169,7 @@ st.markdown(
     .small-color-chip { width:22px; height:22px; border:1px solid #555; flex:0 0 auto; }
     /* スマホカード */
     .sp-card {
+        color:#1a2740;
         background:#fff; border:1px solid #cbd5e1; border-radius:14px;
         padding:12px 14px; margin-bottom:10px;
         box-shadow:0 1px 4px rgba(0,0,0,0.08);
@@ -1326,9 +1327,9 @@ elif is_mobile:
         sp_card_html = f"""
 <div class="sp-card">
   <div style="display:flex;align-items:flex-start;gap:10px;">
-    <div style="width:50px;height:50px;border-radius:8px;border:2px solid #94a3b8;background:{display_hex};flex:0 0 auto;"></div>
+    <div style="width:50px;height:50px;border-radius:8px;border:2px solid #334155;background:{display_hex};box-shadow:inset 0 0 0 1px rgba(0,0,0,0.18);flex:0 0 auto;"></div>
     <div style="flex:1;min-width:0;">
-      <div style="font-size:17px;font-weight:700;line-height:1.2;">{row["No"]}　{row["名称"]}</div>
+      <div style="font-size:17px;font-weight:700;line-height:1.2;color:#17233b;">{row["No"]}　{row["名称"]}</div>
       <div style="font-size:11px;color:#64748b;margin-top:2px;">{row["種類"]} / {gloss_text} / 📍{location_text}</div>
       <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
         <span style="font-size:22px;font-weight:800;color:#17233b;">{qty:g}缶</span>
