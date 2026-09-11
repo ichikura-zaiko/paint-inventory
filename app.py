@@ -756,6 +756,29 @@ if _url_search:
 # 上部操作
 # =========================
 order_count = len(data[data["発注状況"].astype(str).str.strip().isin(["発注予定", "発注済み", "納品待ち"])])
+# 在庫切れ・期限のカウント（両モード共通）
+out_count = int((data["保有数"].apply(normalize_stock) == 0).sum())
+expired_count = 0
+expiring_count = 0
+for _, _r in data.iterrows():
+    _etxt, _ecol = expiry_info(_r.get("入荷日", ""), _r.get("種類", ""))
+    if _ecol == "#dc2626":
+        expired_count += 1
+    elif _ecol == "#d97706":
+        expiring_count += 1
+expiry_count = expired_count + expiring_count
+
+# アラートのクリック絞り込み（?af=out/expired/expiring/expiry）
+if "alert_filter" not in st.session_state:
+    st.session_state["alert_filter"] = ""
+_af = st.query_params.get("af")
+if _af is not None:
+    st.session_state["alert_filter"] = _af
+    if _af:
+        st.session_state["view_mode"] = "search"
+    st.query_params.clear()
+    st.rerun()
+alert_filter = st.session_state["alert_filter"]
 
 if is_mobile:
     # スマホ：HTMLで横並びメトリクス表示
@@ -789,14 +812,29 @@ if is_mobile:
         </div>""",
         unsafe_allow_html=True,
     )
+    _av_out = "#f87171" if out_count > 0 else "#9fb6d6"
+    _av_expg = "#f5a623" if expiring_count > 0 else "#9fb6d6"
+    _av_expd = "#f87171" if expired_count > 0 else "#9fb6d6"
+    _acard = "background:linear-gradient(160deg,#241a2e,#1a1420);border:1px solid rgba(220,120,120,0.28);border-radius:16px;padding:12px 6px;text-align:center;text-decoration:none;display:block;"
+    st.markdown(
+        f"""<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
+            <a href="?af=out" style="{_acard}">
+                <div style="font-size:12px;color:#c9a0a0;margin-bottom:6px;">⚠️ 在庫切れ</div>
+                <div style="font-size:26px;font-weight:800;color:{_av_out};line-height:1;">{out_count}</div>
+            </a>
+            <a href="?af=expiring" style="{_acard}">
+                <div style="font-size:12px;color:#c9a0a0;margin-bottom:6px;">❗ 期限注意</div>
+                <div style="font-size:26px;font-weight:800;color:{_av_expg};line-height:1;">{expiring_count}</div>
+            </a>
+            <a href="?af=expired" style="{_acard}">
+                <div style="font-size:12px;color:#c9a0a0;margin-bottom:6px;">🔴 期限切れ</div>
+                <div style="font-size:26px;font-weight:800;color:{_av_expd};line-height:1;">{expired_count}</div>
+            </a>
+        </div>""",
+        unsafe_allow_html=True,
+    )
 else:
     # ===== KPIカード（画像デザイン） =====
-    out_count = int((data["保有数"].apply(normalize_stock) == 0).sum())
-    expiry_count = 0
-    for _, _r in data.iterrows():
-        _txt, _col = expiry_info(_r.get("入荷日", ""), _r.get("種類", ""))
-        if _col in ("#dc2626", "#d97706"):
-            expiry_count += 1
     total_stock_val = data["保有数"].sum()
 
     # 上部ボタン（右上に配置）
@@ -830,8 +868,8 @@ else:
         _kpi_card("🎨", "登録塗料 / Items", len(data), "種類", "#1c1e21", "#5f6b7a"),
         _kpi_card("📦", "総在庫 / Total Stock", f"{total_stock_val:g}", "缶", "#188038", "#5f6b7a"),
         _kpi_card("🛒", "発注中 / Ordering", order_count, "件", _order_color, "#5f6b7a"),
-        _kpi_card("⚠️", "在庫切れ / Out", out_count, "件", _out_color, "#d93025" if out_count > 0 else "#5f6b7a"),
-        _kpi_card("❗", "期限注意 / Expiring", expiry_count, "件", _exp_color, "#e37400" if expiry_count > 0 else "#5f6b7a"),
+        f'<a href="?af=out" style="flex:1;text-decoration:none;display:flex;">{_kpi_card("⚠️", "在庫切れ / Out", out_count, "件", _out_color, "#d93025" if out_count > 0 else "#5f6b7a")}</a>',
+        f'<a href="?af=expiry" style="flex:1;text-decoration:none;display:flex;">{_kpi_card("❗", "期限注意 / Expiring", expiry_count, "件", _exp_color, "#e37400" if expiry_count > 0 else "#5f6b7a")}</a>',
     ])
     st.markdown(
         f"<div style='display:flex;gap:12px;margin-bottom:6px;'>{_cards}</div>",
@@ -1069,6 +1107,18 @@ if type_filter != "All／すべて":
     owned = owned[owned["種類"].astype(str).str.startswith(type_filter)]
 if color_filter != "All／すべて":
     owned = owned[owned["HEX"].apply(color_family) == color_filter]
+if alert_filter == "out":
+    owned = owned[owned["保有数"].apply(normalize_stock) == 0]
+elif alert_filter in ("expired", "expiring", "expiry"):
+    def _af_match(_row):
+        _t2, _c2 = expiry_info(_row.get("入荷日", ""), _row.get("種類", ""))
+        if alert_filter == "expired":
+            return _c2 == "#dc2626"
+        if alert_filter == "expiring":
+            return _c2 == "#d97706"
+        return _c2 in ("#dc2626", "#d97706")
+    if len(owned) > 0:
+        owned = owned[owned.apply(_af_match, axis=1)]
 
 # 色系統グループ（画像デザインの左ナビ用・5グループに集約）
 def family_group(hex_color):
@@ -1106,6 +1156,16 @@ elif sort_mode in ["入荷日順", "入荷日順 / Date"]:
     owned = owned.sort_values("入荷日")
 
 # =========================
+if alert_filter:
+    _af_labels = {"out": "⚠️ 在庫切れ一覧", "expired": "🔴 期限切れ一覧", "expiring": "❗ 期限注意一覧", "expiry": "❗ 期限一覧"}
+    _bc1, _bc2 = st.columns([3, 1])
+    with _bc1:
+        st.markdown(f"<div style='padding-top:8px;font-weight:700;color:#e5484d;'>{_af_labels.get(alert_filter, '絞り込み中')}（{len(owned)}件）</div>", unsafe_allow_html=True)
+    with _bc2:
+        if st.button("✕ 解除", use_container_width=True, key="clear_alert"):
+            st.session_state["alert_filter"] = ""
+            st.rerun()
+
 # 保有リスト（スマホ/PC分岐）
 # =========================
 if is_mobile:
