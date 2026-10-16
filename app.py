@@ -45,7 +45,7 @@ ORDER_BADGE_COLOR = {
 }
 
 MAX_STOCK = 50.0
-STEP = 0.5
+STEP = 0.1
 HEX_PATTERN = re.compile(r"^#[0-9A-Fa-f]{6}$")
 DEFAULT_GRAY_VALUES = {"", "#999999", "#929396"}
 
@@ -56,6 +56,11 @@ DEFAULT_GRAY_VALUES = {"", "#999999", "#929396"}
 if "mobile_mode" not in st.session_state:
     st.session_state["mobile_mode"] = False
 is_mobile = st.session_state["mobile_mode"]
+
+if "lang" not in st.session_state:
+    st.session_state["lang"] = "ja"
+def L(ja, en):
+    return en if st.session_state.get("lang") == "en" else ja
 
 # --- UA判定：スマホ端末なら自動でスマホ表示（初回のみ・失敗時はPC表示のまま） ---
 if not st.session_state.get("_auto_mode_checked"):
@@ -333,7 +338,7 @@ def normalize_stock(value):
     if pd.isna(value):
         value = 0.0
     value = max(0.0, min(float(value), MAX_STOCK))
-    return round(value * 2) / 2
+    return round(value * 10) / 10
 
 
 def shelf_life_days(paint_type):
@@ -798,15 +803,15 @@ if is_mobile:
     st.markdown(
         f"""<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
             <div style="background:linear-gradient(160deg,#16253d,#101d31);border:1px solid rgba(120,160,220,0.18);border-radius:16px;padding:12px 6px;text-align:center;">
-                <div style="font-size:12px;color:#9fb6d6;margin-bottom:6px;">📦 品目数</div>
+                <div style="font-size:12px;color:#9fb6d6;margin-bottom:6px;">📦 {L("品目数", "Items")}</div>
                 <div style="font-size:26px;font-weight:800;color:#ffffff;line-height:1;">{len(data)}</div>
             </div>
             <div style="background:linear-gradient(160deg,#16253d,#101d31);border:1px solid rgba(120,160,220,0.18);border-radius:16px;padding:12px 6px;text-align:center;">
-                <div style="font-size:12px;color:#9fb6d6;margin-bottom:6px;">🗄️ 総在庫数</div>
+                <div style="font-size:12px;color:#9fb6d6;margin-bottom:6px;">🗄️ {L("総在庫数", "Total stock")}</div>
                 <div style="font-size:26px;font-weight:800;color:#ffffff;line-height:1;">{total_stock:g}</div>
             </div>
             <div style="background:linear-gradient(160deg,#16253d,#101d31);border:1px solid rgba(120,160,220,0.18);border-radius:16px;padding:12px 6px;text-align:center;">
-                <div style="font-size:12px;color:#9fb6d6;margin-bottom:6px;">🛒 発注中</div>
+                <div style="font-size:12px;color:#9fb6d6;margin-bottom:6px;">🛒 {L("発注中", "Ordering")}</div>
                 <div style="font-size:26px;font-weight:800;color:{"#f5a623" if order_count > 0 else "#ffffff"};line-height:1;">{order_count}</div>
             </div>
         </div>""",
@@ -819,15 +824,15 @@ if is_mobile:
     st.markdown(
         f"""<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
             <a href="?af=out" style="{_acard}">
-                <div style="font-size:12px;color:#c9a0a0;margin-bottom:6px;">⚠️ 在庫切れ</div>
+                <div style="font-size:12px;color:#c9a0a0;margin-bottom:6px;">⚠️ {L("在庫切れ", "Out of stock")}</div>
                 <div style="font-size:26px;font-weight:800;color:{_av_out};line-height:1;">{out_count}</div>
             </a>
             <a href="?af=expiring" style="{_acard}">
-                <div style="font-size:12px;color:#c9a0a0;margin-bottom:6px;">❗ 期限注意</div>
+                <div style="font-size:12px;color:#c9a0a0;margin-bottom:6px;">❗ {L("期限注意", "Expiring")}</div>
                 <div style="font-size:26px;font-weight:800;color:{_av_expg};line-height:1;">{expiring_count}</div>
             </a>
             <a href="?af=expired" style="{_acard}">
-                <div style="font-size:12px;color:#c9a0a0;margin-bottom:6px;">🔴 期限切れ</div>
+                <div style="font-size:12px;color:#c9a0a0;margin-bottom:6px;">🔴 {L("期限切れ", "Expired")}</div>
                 <div style="font-size:26px;font-weight:800;color:{_av_expd};line-height:1;">{expired_count}</div>
             </a>
         </div>""",
@@ -914,15 +919,20 @@ if "view_mode" not in st.session_state:
     st.session_state["view_mode"] = "search"
 view_mode = st.session_state["view_mode"]
 
+_lang_btn = "🌐 English" if st.session_state.get("lang") == "ja" else "🌐 日本語"
+if st.button(_lang_btn, use_container_width=True, key="lang_toggle"):
+    st.session_state["lang"] = "en" if st.session_state.get("lang") == "ja" else "ja"
+    st.rerun()
+
 _vm_a = "primary" if view_mode == "search" else "secondary"
 _vm_b = "primary" if view_mode == "manage" else "secondary"
 _vmc1, _vmc2 = st.columns(2)
 with _vmc1:
-    if st.button("🔍 塗料を探す / Search", use_container_width=True, type=_vm_a):
+    if st.button(L("🔍 塗料を探す", "🔍 Search"), use_container_width=True, type=_vm_a):
         st.session_state["view_mode"] = "search"
         st.rerun()
 with _vmc2:
-    if st.button("➕ 追加・管理 / Manage", use_container_width=True, type=_vm_b):
+    if st.button(L("➕ 追加・管理", "➕ Add / Manage"), use_container_width=True, type=_vm_b):
         st.session_state["view_mode"] = "manage"
         st.rerun()
 
@@ -943,15 +953,15 @@ if is_mobile:
     search = st.text_input("🔍 番号・名称・場所 / Search", value=_default_search, placeholder="No. / Name / Location...", label_visibility="collapsed")
     sf1, sf2 = st.columns(2)
     with sf1:
-        type_filter = st.selectbox("カテゴリ", ["All／すべて"] + types)
+        type_filter = st.selectbox(L("カテゴリ", "Category"), ["All／すべて"] + types)
     with sf2:
-        color_filter = st.selectbox("色系統", ["All／すべて", "白系", "黒系", "グレー系", "赤系", "オレンジ系", "茶系", "黄系", "緑系", "青系", "紫系", "ピンク系"])
-    sort_mode = st.selectbox("並び順", ["色番号順 / No.", "保有数順 / Stock", "場所順 / Location", "入荷日順 / Date"])
+        color_filter = st.selectbox(L("色系統", "Color"), ["All／すべて", "白系", "黒系", "グレー系", "赤系", "オレンジ系", "茶系", "黄系", "緑系", "青系", "紫系", "ピンク系"])
+    sort_mode = st.selectbox(L("並び順", "Sort"), ["色番号順 / No.", "保有数順 / Stock", "場所順 / Location", "入荷日順 / Date"])
     gloss_filter = "All／すべて"
     location_filter = ""
 
     # 在庫入力は折りたたみ
-    with st.expander("➕ 在庫を追加・更新する / Add or Update Stock"):
+    with st.expander(L("➕ 在庫を追加・更新する", "➕ Add or Update Stock")):
         number = st.text_input("No / 色番号", placeholder="例: 05-40X")
         number_clean = clean_code(number)
         auto_name, auto_hex, found_color = color_lookup(number_clean, color_df)
@@ -1162,14 +1172,14 @@ if alert_filter:
     with _bc1:
         st.markdown(f"<div style='padding-top:8px;font-weight:700;color:#e5484d;'>{_af_labels.get(alert_filter, '絞り込み中')}（{len(owned)}件）</div>", unsafe_allow_html=True)
     with _bc2:
-        if st.button("✕ 解除", use_container_width=True, key="clear_alert"):
+        if st.button(L("✕ 解除", "✕ Clear"), use_container_width=True, key="clear_alert"):
             st.session_state["alert_filter"] = ""
             st.rerun()
 
 # 保有リスト（スマホ/PC分岐）
 # =========================
 if is_mobile:
-    st.markdown(f"<div style='display:flex;align-items:baseline;justify-content:space-between;margin:8px 0 10px;'><span style='font-size:22px;font-weight:800;color:#ffffff;'>保有リスト</span><span style='font-size:14px;color:#9fb6d6;'>全 {len(owned)} 件</span></div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='display:flex;align-items:baseline;justify-content:space-between;margin:8px 0 10px;'><span style='font-size:22px;font-weight:800;color:#ffffff;'>{L('保有リスト', 'Stock list')}</span><span style='font-size:14px;color:#9fb6d6;'>{L('全 ' + str(len(owned)) + ' 件', str(len(owned)) + ' items')}</span></div>", unsafe_allow_html=True)
 else:
     st.subheader("保有リスト / Stock List")
 
@@ -1211,9 +1221,9 @@ def render_card_buttons(idx, row, qty):
   <a href="{btn_url('m1')}"  style="{btn_red}">−1</a>
 </div>
 <div style="display:flex;gap:5px;margin:2px 0 4px 0;">
-  <a href="{btn_url('edit')}" style="{btn_gray}">✏️ 編集</a>
+  <a href="{btn_url('edit')}" style="{btn_gray}">✏️ {L("編集", "Edit")}</a>
   <a href="{btn_url('qr')}"   style="{btn_gray}">📷 QR</a>
-  <a href="{btn_url('del')}"  style="{btn_gray}">🗑️ 削除</a>
+  <a href="{btn_url('del')}"  style="{btn_gray}">🗑️ {L("削除", "Delete")}</a>
 </div>
 """, unsafe_allow_html=True)
     else:
