@@ -110,20 +110,33 @@ components.html(
     <script>
     (function(){
       try{
-        var pw=window.parent, pd=pw.document, KEY='zaiko_scroll';
-        function scroller(){ return pd.querySelector('section.main')||pd.querySelector('[data-testid="stMain"]')||pd.scrollingElement||pd.documentElement; }
-        pw.__zaikoRestoring=true;
-        setTimeout(function(){ pw.__zaikoRestoring=false; },1200);
-        var want=parseFloat(pw.sessionStorage.getItem(KEY)||'0');
-        if(want>0){
-          var n=0, iv=setInterval(function(){ n++; var sc=scroller(); if(sc){sc.scrollTop=want;} pw.scrollTo(0,want); if(n>24){clearInterval(iv);} },50);
+        var pw = window.parent, pd = pw.document, KEY = 'zaiko_scroll';
+        var SELS = ['section.main', '[data-testid="stMain"]', '[data-testid="stAppViewContainer"]'];
+        function getY(){
+          var ys = [pw.scrollY || 0];
+          for (var i=0;i<SELS.length;i++){ var e=pd.querySelector(SELS[i]); if(e) ys.push(e.scrollTop||0); }
+          if (pd.scrollingElement) ys.push(pd.scrollingElement.scrollTop||0);
+          if (pd.body) ys.push(pd.body.scrollTop||0);
+          return Math.max.apply(null, ys);
         }
-        if(!pw.__zaikoHooked){
-          pw.__zaikoHooked=true;
-          var save=function(){ if(pw.__zaikoRestoring) return; var sc=scroller(); var y=(sc&&sc.scrollTop)||pw.scrollY||0; if(y>0){ pw.sessionStorage.setItem(KEY,y); } };
-          var m=pd.querySelector('section.main')||pd.querySelector('[data-testid="stMain"]');
-          if(m){ m.addEventListener('scroll',save,{passive:true}); }
-          pw.addEventListener('scroll',save,{passive:true});
+        function setY(y){
+          try{ pw.scrollTo(0, y); }catch(e){}
+          for (var i=0;i<SELS.length;i++){ var e=pd.querySelector(SELS[i]); if(e) e.scrollTop=y; }
+          if (pd.scrollingElement) pd.scrollingElement.scrollTop=y;
+          if (pd.body) pd.body.scrollTop=y;
+        }
+        pw.__zaikoRestoring = true;
+        setTimeout(function(){ pw.__zaikoRestoring = false; }, 2500);
+        var want = parseFloat(pw.sessionStorage.getItem(KEY) || '0');
+        if (want > 0){
+          var n = 0, iv = setInterval(function(){ n++; setY(want); if (n > 60){ clearInterval(iv); } }, 50);
+        }
+        if (!pw.__zaikoHooked){
+          pw.__zaikoHooked = true;
+          var save = function(){ if (pw.__zaikoRestoring) return; var y = getY(); if (y > 0){ pw.sessionStorage.setItem(KEY, y); } };
+          pw.addEventListener('scroll', save, {passive:true, capture:true});
+          pd.addEventListener('scroll', save, {passive:true, capture:true});
+          setInterval(save, 300);
         }
       }catch(e){}
     })();
