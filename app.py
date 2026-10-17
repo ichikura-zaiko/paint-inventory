@@ -9,6 +9,7 @@ import qrcode
 import io
 import base64
 from datetime import datetime, timedelta
+import streamlit.components.v1 as components
 
 
 # =========================
@@ -79,6 +80,34 @@ def gloss_label(x):
             return s.split("／")[0]
         return _GLOSS_EN.get(s, s)
     return s
+# --- preserve scroll position across reruns (qty +/- etc.) ---
+st.markdown('<style>div[data-testid="stCustomComponent"]{height:0!important;min-height:0!important;margin:0!important;overflow:hidden!important;}</style>', unsafe_allow_html=True)
+components.html(
+    """
+    <script>
+    (function(){
+      try{
+        var pw=window.parent, pd=pw.document, KEY='zaiko_scroll';
+        function scroller(){ return pd.querySelector('section.main')||pd.querySelector('[data-testid="stMain"]')||pd.scrollingElement||pd.documentElement; }
+        pw.__zaikoRestoring=true;
+        setTimeout(function(){ pw.__zaikoRestoring=false; },1200);
+        var want=parseFloat(pw.sessionStorage.getItem(KEY)||'0');
+        if(want>0){
+          var n=0, iv=setInterval(function(){ n++; var sc=scroller(); if(sc){sc.scrollTop=want;} pw.scrollTo(0,want); if(n>24){clearInterval(iv);} },50);
+        }
+        if(!pw.__zaikoHooked){
+          pw.__zaikoHooked=true;
+          var save=function(){ if(pw.__zaikoRestoring) return; var sc=scroller(); var y=(sc&&sc.scrollTop)||pw.scrollY||0; if(y>0){ pw.sessionStorage.setItem(KEY,y); } };
+          var m=pd.querySelector('section.main')||pd.querySelector('[data-testid="stMain"]');
+          if(m){ m.addEventListener('scroll',save,{passive:true}); }
+          pw.addEventListener('scroll',save,{passive:true});
+        }
+      }catch(e){}
+    })();
+    </script>
+    """,
+    height=0,
+)
 # --- UA判定：スマホ端末なら自動でスマホ表示（初回のみ・失敗時はPC表示のまま） ---
 if not st.session_state.get("_auto_mode_checked"):
     st.session_state["_auto_mode_checked"] = True
