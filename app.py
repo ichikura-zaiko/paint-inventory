@@ -98,6 +98,11 @@ def fam_label(x):
     if st.session_state.get("lang") == "en":
         return _FAM_EN.get(str(x), str(x))
     return x
+_LOC_EN = {"入荷スペース": "Receiving area", "第1ブース": "Booth 1", "第１ブース": "Booth 1", "第2ブース": "Booth 2", "第２ブース": "Booth 2", "第3ブース": "Booth 3", "第３ブース": "Booth 3", "第4ブース": "Booth 4", "第４ブース": "Booth 4", "第5ブース": "Booth 5", "第５ブース": "Booth 5", "第6ブース": "Booth 6", "第６ブース": "Booth 6"}
+def location_label(x):
+    if st.session_state.get("lang") == "en":
+        return _LOC_EN.get(str(x).strip(), str(x))
+    return x
 # --- preserve scroll position across reruns (qty +/- etc.) ---
 st.markdown('<style>div[data-testid="stCustomComponent"]{height:0!important;min-height:0!important;margin:0!important;overflow:hidden!important;}</style>', unsafe_allow_html=True)
 components.html(
@@ -1452,7 +1457,7 @@ elif is_mobile:
         display_hex = normalize_hex(row["HEX"])
         expiry_text, expiry_color = expiry_info(row.get("入荷日",""), row.get("種類",""))
         qty = normalize_stock(row["保有数"])
-        location_text = str(row.get("保管場所","")).strip() or "—"
+        location_text = location_label(str(row.get("保管場所","")).strip() or "—")
         gloss_text = str(row.get("艶","")).strip() or "—"
         order_status = str(row.get("発注状況","")).strip()
         order_badge_html = ""
@@ -1542,7 +1547,7 @@ else:
                     display_hex = normalize_hex(row["HEX"])
                     expiry_text, expiry_color = expiry_info(row.get("入荷日", ""), row.get("種類", ""))
                     qty = normalize_stock(row["保有数"])
-                    location_text = str(row.get("保管場所", "")).strip() or "—"
+                    location_text = location_label(str(row.get("保管場所", "")).strip() or "—")
                     gloss_text = gloss_label(str(row.get("艶", "")).strip() or "—")
                     maker_text = str(row.get("得意先", "")).strip() or "—"
                     type_text = type_label(str(row.get("種類", "")).strip() or "—")
