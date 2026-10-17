@@ -1493,7 +1493,8 @@ elif is_mobile:
                     append_history(history_sheet, "入庫" if _dl > 0 else "出庫", data.loc[idx], _bef, _aft, _aft - _bef, f"SP{_dl:+g}")
                     st.rerun(scope="fragment")
     # ===== スマホ専用カード =====
-    for idx, row in owned.iterrows():
+    _sp_lim = st.session_state.get("sp_limit", 30)
+    for idx, row in owned.head(_sp_lim).iterrows():
         display_hex = normalize_hex(row["HEX"])
         expiry_text, expiry_color = expiry_info(row.get("入荷日",""), row.get("種類",""))
         qty = normalize_stock(row["保有数"])
@@ -1523,6 +1524,11 @@ elif is_mobile:
         _qty_frag(idx, display_hex)
         render_card_buttons(idx, row, qty)
         st.markdown("<div style='margin:2px 0;'></div>", unsafe_allow_html=True)
+    if len(owned) > _sp_lim:
+        _remain = len(owned) - _sp_lim
+        if st.button(L("➕ もっと見る（残り" + str(_remain) + "件）", "➕ Show more (" + str(_remain) + " left)"), use_container_width=True, key="sp_more"):
+            st.session_state["sp_limit"] = _sp_lim + 30
+            st.rerun()
 else:
     # ===== 色系統サイドバー（画像デザインの左ナビ） =====
     FAM_ORDER = ["白・クリア", "黒・グレー", "赤・オレンジ", "青・緑", "その他"]
