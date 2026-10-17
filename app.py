@@ -894,11 +894,16 @@ else:
     total_stock_val = data["保有数"].sum()
 
     # 上部ボタン（右上に配置）
-    _bsp, _brl, _bsm = st.columns([6, 1.3, 1.3])
+    _bsp, _brl, _blg, _bsm = st.columns([5, 1.3, 1.3, 1.3])
     with _brl:
         if st.button("🔄 再読み込み", use_container_width=True):
             load_color_master.clear()
             _cached_inventory_values.clear()
+            st.rerun()
+    with _blg:
+        _lang_btn_pc = "🌐 English" if st.session_state.get("lang") == "ja" else "🌐 日本語"
+        if st.button(_lang_btn_pc, use_container_width=True, key="lang_toggle"):
+            st.session_state["lang"] = "en" if st.session_state.get("lang") == "ja" else "ja"
             st.rerun()
     with _bsm:
         if st.button("📱 スマホ表示", use_container_width=True):
@@ -969,12 +974,6 @@ if not is_mobile:
 if "view_mode" not in st.session_state:
     st.session_state["view_mode"] = "search"
 view_mode = st.session_state["view_mode"]
-
-if not is_mobile:
-    _lang_btn = "🌐 English" if st.session_state.get("lang") == "ja" else "🌐 日本語"
-    if st.button(_lang_btn, use_container_width=True, key="lang_toggle"):
-        st.session_state["lang"] = "en" if st.session_state.get("lang") == "ja" else "ja"
-        st.rerun()
 
 _vm_a = "primary" if view_mode == "search" else "secondary"
 _vm_b = "primary" if view_mode == "manage" else "secondary"
