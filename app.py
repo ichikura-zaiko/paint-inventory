@@ -61,7 +61,24 @@ if "lang" not in st.session_state:
     st.session_state["lang"] = "ja"
 def L(ja, en):
     return en if st.session_state.get("lang") == "en" else ja
-
+_TYPE_EN = {"メラミン": "Melamine", "アクリル": "Acrylic", "ウレタン": "Urethane", "粉体": "Powder", "エポキシ": "Epoxy", "ラッカー": "Lacquer", "その他": "Other", "粉体ポリエステル": "Powder polyester", "粉体エポキシポリエステル": "Powder epoxy-PE", "粉体エポキシ": "Powder epoxy", "粉体ポリウレタン": "Powder PU", "粉体アクリル": "Powder acrylic"}
+_COLOR_EN = {"All／すべて": "All", "白系": "White", "黒系": "Black", "グレー系": "Gray", "赤系": "Red", "オレンジ系": "Orange", "茶系": "Brown", "黄系": "Yellow", "緑系": "Green", "青系": "Blue", "紫系": "Purple", "ピンク系": "Pink"}
+_GLOSS_EN = {"つや有": "Gloss", "つや消し": "Matte", "半艶": "Semi-gloss", "艶あり": "Gloss", "艶なし": "Matte", "3分艶": "30% gloss", "３分艶": "30% gloss", "7分艶": "70% gloss", "７分艶": "70% gloss", "全艶": "Full gloss"}
+def type_label(x):
+    if st.session_state.get("lang") == "en":
+        return _TYPE_EN.get(str(x).strip(), str(x))
+    return x
+def color_label(x):
+    if st.session_state.get("lang") == "en":
+        return _COLOR_EN.get(str(x).strip(), str(x))
+    return x
+def gloss_label(x):
+    s = str(x).strip()
+    if st.session_state.get("lang") == "en":
+        if "／" in s:
+            return s.split("／")[0]
+        return _GLOSS_EN.get(s, s)
+    return s
 # --- UA判定：スマホ端末なら自動でスマホ表示（初回のみ・失敗時はPC表示のまま） ---
 if not st.session_state.get("_auto_mode_checked"):
     st.session_state["_auto_mode_checked"] = True
@@ -788,7 +805,7 @@ alert_filter = st.session_state["alert_filter"]
 if is_mobile:
     # スマホ：HTMLで横並びメトリクス表示
     total_stock = data["保有数"].sum()
-    _hc1, _hc2, _hc3 = st.columns([4, 1.2, 1.2])
+    _hc1, _hc2, _hc3, _hc4 = st.columns([3.2, 1, 1, 1])
     with _hc1:
         st.markdown("<div style='display:flex;align-items:center;gap:8px;padding-top:4px;'><span style='font-size:26px;'>🎨</span><span style='font-size:22px;font-weight:800;color:#ffffff;'>一倉 塗料管理</span></div>", unsafe_allow_html=True)
     with _hc2:
@@ -797,6 +814,11 @@ if is_mobile:
             _cached_inventory_values.clear()
             st.rerun()
     with _hc3:
+        _lh = "🌐EN" if st.session_state.get("lang") == "ja" else "🌐日"
+        if st.button(_lh, use_container_width=True, key="lang_toggle_m"):
+            st.session_state["lang"] = "en" if st.session_state.get("lang") == "ja" else "ja"
+            st.rerun()
+    with _hc4:
         if st.button("💻 PC", use_container_width=True, key="m_pc_top"):
             st.session_state["mobile_mode"] = False
             st.rerun()
@@ -919,10 +941,11 @@ if "view_mode" not in st.session_state:
     st.session_state["view_mode"] = "search"
 view_mode = st.session_state["view_mode"]
 
-_lang_btn = "🌐 English" if st.session_state.get("lang") == "ja" else "🌐 日本語"
-if st.button(_lang_btn, use_container_width=True, key="lang_toggle"):
-    st.session_state["lang"] = "en" if st.session_state.get("lang") == "ja" else "ja"
-    st.rerun()
+if not is_mobile:
+    _lang_btn = "🌐 English" if st.session_state.get("lang") == "ja" else "🌐 日本語"
+    if st.button(_lang_btn, use_container_width=True, key="lang_toggle"):
+        st.session_state["lang"] = "en" if st.session_state.get("lang") == "ja" else "ja"
+        st.rerun()
 
 _vm_a = "primary" if view_mode == "search" else "secondary"
 _vm_b = "primary" if view_mode == "manage" else "secondary"
@@ -955,7 +978,7 @@ if is_mobile:
     with sf1:
         type_filter = st.selectbox(L("カテゴリ", "Category"), ["All／すべて"] + types)
     with sf2:
-        color_filter = st.selectbox(L("色系統", "Color"), ["All／すべて", "白系", "黒系", "グレー系", "赤系", "オレンジ系", "茶系", "黄系", "緑系", "青系", "紫系", "ピンク系"])
+        color_filter = st.selectbox(L("色系統", "Color"), ["All／すべて", "白系", "黒系", "グレー系", "赤系", "オレンジ系", "茶系", "黄系", "緑系", "青系", "紫系", "ピンク系"], format_func=color_label)
     sort_mode = st.selectbox(L("並び順", "Sort"), ["色番号順 / No.", "保有数順 / Stock", "場所順 / Location", "入荷日順 / Date"])
     gloss_filter = "All／すべて"
     location_filter = ""
@@ -1081,7 +1104,7 @@ else:
         with sc2:
             type_filter = st.selectbox("種類 / Type", ["All／すべて"] + types)
         with sc3:
-            color_filter = st.selectbox("色系統 / Color", ["All／すべて", "白系", "黒系", "グレー系", "赤系", "オレンジ系", "茶系", "黄系", "緑系", "青系", "紫系", "ピンク系"])
+            color_filter = st.selectbox("色系統 / Color", ["All／すべて", "白系", "黒系", "グレー系", "赤系", "オレンジ系", "茶系", "黄系", "緑系", "青系", "紫系", "ピンク系"], format_func=color_label)
         with sc4:
             gloss_filter = st.selectbox("艶 / Finish", ["All／すべて"] + GLOSS_OPTIONS)
         with sc5:
@@ -1400,7 +1423,7 @@ elif is_mobile:
     <div style="width:50px;height:50px;border-radius:8px;border:2px solid #334155;background:{display_hex};box-shadow:inset 0 0 0 1px rgba(0,0,0,0.18);flex:0 0 auto;"></div>
     <div style="flex:1;min-width:0;">
       <div style="font-size:17px;font-weight:700;line-height:1.2;color:#17233b;">{row["No"]}　{row["名称"]}</div>
-      <div style="font-size:11px;color:#64748b;margin-top:2px;">{row["種類"]} / {gloss_text} / 📍{location_text}</div>
+      <div style="font-size:11px;color:#64748b;margin-top:2px;">{type_label(row["種類"])} / {gloss_label(gloss_text)} / 📍{location_text}</div>
       <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
         <span style="font-size:22px;font-weight:800;color:#17233b;">{qty:g}缶</span>
         {cans_html}
