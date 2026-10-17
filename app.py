@@ -104,6 +104,8 @@ def location_label(x):
         return _LOC_EN.get(str(x).strip(), str(x))
     return x
 # --- preserve scroll position across reruns (qty +/- etc.) ---
+_sp_scroll = st.session_state.pop("sp_scroll_idx", None)
+_sp_tid = str(int(_sp_scroll)) if _sp_scroll is not None else "-1"
 st.markdown('<style>div[data-testid="stCustomComponent"]{height:0!important;min-height:0!important;margin:0!important;overflow:hidden!important;}</style>', unsafe_allow_html=True)
 components.html(
     """
@@ -111,6 +113,7 @@ components.html(
     (function(){
       try{
         var pw = window.parent, pd = pw.document, KEY = 'zaiko_scroll';
+        var TID = """ + _sp_tid + """;
         var SELS = ['section.main', '[data-testid="stMain"]', '[data-testid="stAppViewContainer"]'];
         function getY(){
           var ys = [pw.scrollY || 0];
@@ -126,10 +129,19 @@ components.html(
           if (pd.body) pd.body.scrollTop=y;
         }
         pw.__zaikoRestoring = true;
-        setTimeout(function(){ pw.__zaikoRestoring = false; }, 2500);
-        var want = parseFloat(pw.sessionStorage.getItem(KEY) || '0');
-        if (want > 0){
-          var n = 0, iv = setInterval(function(){ n++; setY(want); if (n > 60){ clearInterval(iv); } }, 50);
+        setTimeout(function(){ pw.__zaikoRestoring = false; }, 3000);
+        if (TID >= 0){
+          var n = 0, iv = setInterval(function(){
+            n++;
+            var a = pd.querySelector('a[href$="sp_idx=' + TID + '"]');
+            if (a){ a.scrollIntoView({block:'center'}); clearInterval(iv); }
+            if (n > 100){ clearInterval(iv); }
+          }, 50);
+        } else {
+          var want = parseFloat(pw.sessionStorage.getItem(KEY) || '0');
+          if (want > 0){
+            var m = 0, iv2 = setInterval(function(){ m++; setY(want); if (m > 60){ clearInterval(iv2); } }, 50);
+          }
         }
         if (!pw.__zaikoHooked){
           pw.__zaikoHooked = true;
@@ -796,6 +808,7 @@ if is_mobile:
     if sp_action and sp_idx:
         try:
             idx = int(sp_idx)
+            st.session_state["sp_scroll_idx"] = idx
             before = normalize_stock(data.loc[idx, "保有数"])
             if sp_action == "p05":
                 after = min(before + 0.5, MAX_STOCK)
