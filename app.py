@@ -1474,24 +1474,32 @@ if len(owned) == 0:
 elif is_mobile:
     @st.fragment
     def _qty_frag(idx, hexcolor):
-        qty = normalize_stock(data.loc[idx, "保有数"]) if idx in data.index else 0.0
-        _ch = can_display_html(qty, hexcolor)
-        st.markdown(
-            f'<div style="display:flex;align-items:center;gap:8px;margin:2px 0 6px;">'
-            f'<span style="font-size:22px;font-weight:800;color:#17233b;">{qty:g}{L("缶", " cans")}</span>{_ch}</div>',
-            unsafe_allow_html=True,
-        )
-        _qc = st.columns(4)
-        _acts = [("＋0.5", 0.5), ("＋1", 1.0), ("−0.5", -0.5), ("−1", -1.0)]
-        for _col, (_lbl, _dl) in zip(_qc, _acts):
-            with _col:
-                if st.button(_lbl, key=f"qf_{idx}_{_lbl}", use_container_width=True):
-                    _bef = normalize_stock(data.loc[idx, "保有数"])
-                    _aft = max(0.0, min(_bef + _dl, MAX_STOCK))
-                    data.loc[idx, "保有数"] = _aft
-                    save_data(inventory_sheet, data)
-                    append_history(history_sheet, "入庫" if _dl > 0 else "出庫", data.loc[idx], _bef, _aft, _aft - _bef, f"SP{_dl:+g}")
-                    st.rerun(scope="fragment")
+        cur = normalize_stock(data.loc[idx, "保有数"]) if idx in data.index else 0.0
+        _k = f"qn_{idx}"
+        _dk = f"qnd_{idx}"
+        if st.session_state.get(_dk) != cur:
+            st.session_state[_k] = cur
+            st.session_state[_dk] = cur
+        _ch = can_display_html(cur, hexcolor)
+        st.markdown(f'<div style="margin:2px 0 4px;">{_ch}</div>', unsafe_allow_html=True)
+        def _save_qty(_b, _a):
+            data.loc[idx, "保有数"] = _a
+            save_data(inventory_sheet, data)
+            append_history(history_sheet, "入庫" if _a > _b else "出庫", data.loc[idx], _b, _a, _a - _b, "SP調整")
+        _cL, _cN, _cR = st.columns([1, 2, 1])
+        with _cL:
+            if st.button("−1", key=f"qm1_{idx}", use_container_width=True):
+                _save_qty(cur, normalize_stock(max(cur - 1.0, 0.0)))
+                st.rerun(scope="fragment")
+        with _cN:
+            _val = st.number_input(L("保有数", "Stock"), min_value=0.0, max_value=MAX_STOCK, step=0.1, format="%.1f", key=_k, label_visibility="collapsed")
+            if abs(normalize_stock(_val) - cur) > 1e-9:
+                _save_qty(cur, normalize_stock(_val))
+                st.rerun(scope="fragment")
+        with _cR:
+            if st.button("＋1", key=f"qp1_{idx}", use_container_width=True):
+                _save_qty(cur, normalize_stock(min(cur + 1.0, MAX_STOCK)))
+                st.rerun(scope="fragment")
     # ===== スマホ専用カード =====
     for idx, row in owned.iterrows():
         display_hex = normalize_hex(row["HEX"])
