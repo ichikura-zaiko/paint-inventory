@@ -61,7 +61,7 @@ if "lang" not in st.session_state:
     st.session_state["lang"] = "ja"
 def L(ja, en):
     return en if st.session_state.get("lang") == "en" else ja
-_TYPE_EN = {"メラミン": "Melamine", "アクリル": "Acrylic", "ウレタン": "Urethane", "粉体": "Powder", "エポキシ": "Epoxy", "ラッカー": "Lacquer", "その他": "Other", "粉体ポリエステル": "Powder polyester", "粉体エポキシポリエステル": "Powder epoxy-PE", "粉体エポキシ": "Powder epoxy", "粉体ポリウレタン": "Powder PU", "粉体アクリル": "Powder acrylic"}
+_TYPE_EN = {"All／すべて": "All", "メラミン": "Melamine", "アクリル": "Acrylic", "ウレタン": "Urethane", "粉体": "Powder", "エポキシ": "Epoxy", "ラッカー": "Lacquer", "その他": "Other", "粉体ポリエステル": "Powder polyester", "粉体エポキシポリエステル": "Powder epoxy-PE", "粉体エポキシ": "Powder epoxy", "粉体ポリウレタン": "Powder PU", "粉体アクリル": "Powder acrylic"}
 _COLOR_EN = {"All／すべて": "All", "白系": "White", "黒系": "Black", "グレー系": "Gray", "赤系": "Red", "オレンジ系": "Orange", "茶系": "Brown", "黄系": "Yellow", "緑系": "Green", "青系": "Blue", "紫系": "Purple", "ピンク系": "Pink"}
 _GLOSS_EN = {"つや有": "Gloss", "つや消し": "Matte", "半艶": "Semi-gloss", "艶あり": "Gloss", "艶なし": "Matte", "3分艶": "30% gloss", "３分艶": "30% gloss", "7分艶": "70% gloss", "７分艶": "70% gloss", "全艶": "Full gloss"}
 def type_label(x):
@@ -98,11 +98,11 @@ if is_mobile:
     pass
 else:
     st.markdown(
-        """
+        f"""
         <div style="background:linear-gradient(90deg,#1e3a5f,#2e6da4);padding:10px 18px;border-radius:10px;margin-bottom:6px;display:flex;align-items:center;gap:12px;">
             <span style="font-size:2rem;">🎨</span>
             <div>
-                <div style="color:#ffffff;font-size:1.5rem;font-weight:700;letter-spacing:2px;">一倉　塗料管理システム</div>
+                <div style="color:#ffffff;font-size:1.5rem;font-weight:700;letter-spacing:2px;">{L("一倉　塗料管理システム", "Ichikura Paint Inventory")}</div>
                 <div style="color:#a8c8e8;font-size:0.8rem;">Ichikura Paint Inventory Management System</div>
             </div>
         </div>
@@ -807,7 +807,7 @@ if is_mobile:
     total_stock = data["保有数"].sum()
     _hc1, _hc2, _hc3, _hc4 = st.columns([3.2, 1, 1, 1])
     with _hc1:
-        st.markdown("<div style='display:flex;align-items:center;gap:8px;padding-top:4px;'><span style='font-size:26px;'>🎨</span><span style='font-size:22px;font-weight:800;color:#ffffff;'>一倉 塗料管理</span></div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='display:flex;align-items:center;gap:8px;padding-top:4px;'><span style='font-size:26px;'>🎨</span><span style='font-size:22px;font-weight:800;color:#ffffff;'>{L('一倉 塗料管理', 'Ichikura Paint')}</span></div>", unsafe_allow_html=True)
     with _hc2:
         if st.button("🔄 更新", use_container_width=True, key="m_reload_top"):
             load_color_master.clear()
@@ -976,7 +976,7 @@ if is_mobile:
     search = st.text_input("🔍 番号・名称・場所 / Search", value=_default_search, placeholder="No. / Name / Location...", label_visibility="collapsed")
     sf1, sf2 = st.columns(2)
     with sf1:
-        type_filter = st.selectbox(L("カテゴリ", "Category"), ["All／すべて"] + types)
+        type_filter = st.selectbox(L("カテゴリ", "Category"), ["All／すべて"] + types, format_func=type_label)
     with sf2:
         color_filter = st.selectbox(L("色系統", "Color"), ["All／すべて", "白系", "黒系", "グレー系", "赤系", "オレンジ系", "茶系", "黄系", "緑系", "青系", "紫系", "ピンク系"], format_func=color_label)
     sort_mode = st.selectbox(L("並び順", "Sort"), ["色番号順 / No.", "保有数順 / Stock", "場所順 / Location", "入荷日順 / Date"])
@@ -999,7 +999,7 @@ if is_mobile:
         with fa1:
             customer = st.selectbox("得意先 / Customer", customers)
         with fa2:
-            paint_type = st.selectbox("種類 / Type", types)
+            paint_type = st.selectbox("種類 / Type", types, format_func=type_label)
         fb1, fb2 = st.columns(2)
         with fb1:
             hex_color = st.color_picker("色 / Color", auto_hex)
@@ -1046,7 +1046,7 @@ else:
         with r1c1:
             customer = st.selectbox("得意先 / Customer", customers)
         with r1c2:
-            paint_type = st.selectbox("種類 / Type", types)
+            paint_type = st.selectbox("種類 / Type", types, format_func=type_label)
         with r1c3:
             number = st.text_input("No / 色番号")
             number_clean = clean_code(number)
@@ -1102,7 +1102,7 @@ else:
         with sc1:
             search = st.text_input("🔍 番号・名称・得意先・種類・場所", placeholder="Search...")
         with sc2:
-            type_filter = st.selectbox("種類 / Type", ["All／すべて"] + types)
+            type_filter = st.selectbox("種類 / Type", ["All／すべて"] + types, format_func=type_label)
         with sc3:
             color_filter = st.selectbox("色系統 / Color", ["All／すべて", "白系", "黒系", "グレー系", "赤系", "オレンジ系", "茶系", "黄系", "緑系", "青系", "紫系", "ピンク系"], format_func=color_label)
         with sc4:
