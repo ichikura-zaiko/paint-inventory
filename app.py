@@ -1314,12 +1314,6 @@ def render_card_buttons(idx, row, qty):
             return f"?sp_action={action}&sp_idx={idx}"
 
         st.markdown(f"""
-<div style="display:flex;gap:5px;margin:4px 0 2px 0;">
-  <a href="{btn_url('p05')}" style="{btn_style}">＋0.5</a>
-  <a href="{btn_url('p1')}"  style="{btn_style}">＋1</a>
-  <a href="{btn_url('m05')}" style="{btn_red}">−0.5</a>
-  <a href="{btn_url('m1')}"  style="{btn_red}">−1</a>
-</div>
 <div style="display:flex;gap:5px;margin:2px 0 4px 0;">
   <a href="{btn_url('edit')}" style="{btn_gray}">✏️ {L("編集", "Edit")}</a>
   <a href="{btn_url('qr')}"   style="{btn_gray}">📷 QR</a>
@@ -1478,6 +1472,26 @@ def render_card_buttons(idx, row, qty):
 if len(owned) == 0:
     st.info("該当する在庫データがありません。")
 elif is_mobile:
+    @st.fragment
+    def _qty_frag(idx, hexcolor):
+        qty = normalize_stock(data.loc[idx, "保有数"]) if idx in data.index else 0.0
+        _ch = can_display_html(qty, hexcolor)
+        st.markdown(
+            f'<div style="display:flex;align-items:center;gap:8px;margin:2px 0 6px;">'
+            f'<span style="font-size:22px;font-weight:800;color:#17233b;">{qty:g}{L("缶", " cans")}</span>{_ch}</div>',
+            unsafe_allow_html=True,
+        )
+        _qc = st.columns(4)
+        _acts = [("＋0.5", 0.5), ("＋1", 1.0), ("−0.5", -0.5), ("−1", -1.0)]
+        for _col, (_lbl, _dl) in zip(_qc, _acts):
+            with _col:
+                if st.button(_lbl, key=f"qf_{idx}_{_lbl}", use_container_width=True):
+                    _bef = normalize_stock(data.loc[idx, "保有数"])
+                    _aft = max(0.0, min(_bef + _dl, MAX_STOCK))
+                    data.loc[idx, "保有数"] = _aft
+                    save_data(inventory_sheet, data)
+                    append_history(history_sheet, "入庫" if _dl > 0 else "出庫", data.loc[idx], _bef, _aft, _aft - _bef, f"SP{_dl:+g}")
+                    st.rerun(scope="fragment")
     # ===== スマホ専用カード =====
     for idx, row in owned.iterrows():
         display_hex = normalize_hex(row["HEX"])
@@ -1501,15 +1515,12 @@ elif is_mobile:
     <div style="flex:1;min-width:0;">
       <div style="font-size:17px;font-weight:700;line-height:1.2;color:#17233b;">{row["No"]}　{row["名称"]}</div>
       <div style="font-size:11px;color:#64748b;margin-top:2px;">{type_label(row["種類"])} / {gloss_label(gloss_text)} / 📍{location_text}</div>
-      <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
-        <span style="font-size:22px;font-weight:800;color:#17233b;">{qty:g}{L('缶', ' cans')}</span>
-        {cans_html}
-      </div>
       <div style="margin-top:3px;font-size:11px;color:{expiry_color};">📅 {expiry_text}{order_extra}</div>
     </div>
   </div>
 </div>"""
         st.markdown(sp_card_html, unsafe_allow_html=True)
+        _qty_frag(idx, display_hex)
         render_card_buttons(idx, row, qty)
         st.markdown("<div style='margin:2px 0;'></div>", unsafe_allow_html=True)
 else:
