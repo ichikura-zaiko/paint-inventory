@@ -944,11 +944,11 @@ else:
     _out_color = "#d93025" if out_count > 0 else "#1c1e21"
     _exp_color = "#e37400" if expiry_count > 0 else "#1c1e21"
     _cards = "".join([
-        _kpi_card("🎨", "登録塗料 / Items", len(data), "種類", "#1c1e21", "#5f6b7a"),
-        _kpi_card("📦", "総在庫 / Total Stock", f"{total_stock_val:g}", "缶", "#188038", "#5f6b7a"),
-        _kpi_card("🛒", "発注中 / Ordering", order_count, "件", _order_color, "#5f6b7a"),
-        f'<a href="?af=out" style="flex:1 1 150px;min-width:150px;text-decoration:none;display:flex;">{_kpi_card("⚠️", "在庫切れ / Out", out_count, "件", _out_color, "#d93025" if out_count > 0 else "#5f6b7a")}</a>',
-        f'<a href="?af=expiry" style="flex:1 1 150px;min-width:150px;text-decoration:none;display:flex;">{_kpi_card("❗", "期限注意 / Expiring", expiry_count, "件", _exp_color, "#e37400" if expiry_count > 0 else "#5f6b7a")}</a>',
+        _kpi_card("🎨", L("登録塗料", "Items"), len(data), L("種類", "types"), "#1c1e21", "#5f6b7a"),
+        _kpi_card("📦", L("総在庫", "Total Stock"), f"{total_stock_val:g}", L("缶", "cans"), "#188038", "#5f6b7a"),
+        _kpi_card("🛒", L("発注中", "Ordering"), order_count, L("件", ""), _order_color, "#5f6b7a"),
+        f'<a href="?af=out" style="flex:1 1 150px;min-width:150px;text-decoration:none;display:flex;">{_kpi_card("⚠️", L("在庫切れ", "Out"), out_count, L("件", ""), _out_color, "#d93025" if out_count > 0 else "#5f6b7a")}</a>',
+        f'<a href="?af=expiry" style="flex:1 1 150px;min-width:150px;text-decoration:none;display:flex;">{_kpi_card("❗", L("期限注意", "Expiring"), expiry_count, L("件", ""), _exp_color, "#e37400" if expiry_count > 0 else "#5f6b7a")}</a>',
     ])
     st.markdown(
         f"<div style='display:flex;flex-wrap:wrap;gap:12px;margin-bottom:6px;'>{_cards}</div>",
@@ -1471,7 +1471,7 @@ elif is_mobile:
       <div style="font-size:17px;font-weight:700;line-height:1.2;color:#17233b;">{row["No"]}　{row["名称"]}</div>
       <div style="font-size:11px;color:#64748b;margin-top:2px;">{type_label(row["種類"])} / {gloss_label(gloss_text)} / 📍{location_text}</div>
       <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
-        <span style="font-size:22px;font-weight:800;color:#17233b;">{qty:g}缶</span>
+        <span style="font-size:22px;font-weight:800;color:#17233b;">{qty:g}{L('缶', ' cans')}</span>
         {cans_html}
       </div>
       <div style="margin-top:3px;font-size:11px;color:{expiry_color};">📅 {expiry_text}{order_extra}</div>
@@ -1528,7 +1528,7 @@ else:
         st.info("該当する在庫データがありません。")
     elif _style == "list":
         _disp = owned[["No", "名称", "得意先", "種類", "艶", "保管場所", "保有数", "発注状況"]].copy()
-        _disp = _disp.rename(columns={"得意先": "メーカー", "保有数": "在庫数(缶)"})
+        _disp = _disp.rename(columns={"得意先": L("メーカー", "Maker"), "保有数": L("在庫数(缶)", "Stock (cans)")})
         st.dataframe(_disp, use_container_width=True, hide_index=True)
     else:
         _rows = list(owned.iterrows())
@@ -1570,8 +1570,8 @@ else:
       <div style="margin-top:6px;font-size:12px;color:#5f6b7a;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">{L('缶残量', 'Stock')} {cans_html}</div>{order_badge_html}
     </div>
     <div style="text-align:right;flex:0 0 auto;">
-      <div style="font-size:11px;color:#5f6b7a;">在庫数</div>
-      <div style="font-size:26px;font-weight:800;color:{stock_color};">{qty:g}<span style="font-size:13px;font-weight:700;"> 缶</span></div>
+      <div style="font-size:11px;color:#5f6b7a;">{L('在庫数', 'Stock')}</div>
+      <div style="font-size:26px;font-weight:800;color:{stock_color};">{qty:g}<span style="font-size:13px;font-weight:700;">{L(' 缶', ' cans')}</span></div>
     </div>
   </div>
 </div>""",
