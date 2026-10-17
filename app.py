@@ -93,6 +93,11 @@ def sort_label(x):
             return s.split(" / ")[1]
         return _SORT_EN.get(s, s)
     return x
+_FAM_EN = {"白・クリア": "White / Clear", "黒・グレー": "Black / Gray", "赤・オレンジ": "Red / Orange", "青・緑": "Blue / Green", "その他": "Other", "すべて": "All", "在庫切れ": "Out of stock", "期限注意": "Expiry alert"}
+def fam_label(x):
+    if st.session_state.get("lang") == "en":
+        return _FAM_EN.get(str(x), str(x))
+    return x
 # --- preserve scroll position across reruns (qty +/- etc.) ---
 st.markdown('<style>div[data-testid="stCustomComponent"]{height:0!important;min-height:0!important;margin:0!important;overflow:hidden!important;}</style>', unsafe_allow_html=True)
 components.html(
@@ -1143,17 +1148,17 @@ else:
         with sc1:
             search = st.text_input(L("🔍 番号・名称・得意先・種類・場所", "🔍 No. / Name / Customer / Type / Location"), placeholder="Search...")
         with sc2:
-            type_filter = st.selectbox("種類 / Type", ["All／すべて"] + types, format_func=type_label)
+            type_filter = st.selectbox(L("種類", "Type"), ["All／すべて"] + types, format_func=type_label)
         with sc3:
-            color_filter = st.selectbox("色系統 / Color", ["All／すべて", "白系", "黒系", "グレー系", "赤系", "オレンジ系", "茶系", "黄系", "緑系", "青系", "紫系", "ピンク系"], format_func=color_label)
+            color_filter = st.selectbox(L("色系統", "Color"), ["All／すべて", "白系", "黒系", "グレー系", "赤系", "オレンジ系", "茶系", "黄系", "緑系", "青系", "紫系", "ピンク系"], format_func=color_label)
         with sc4:
-            gloss_filter = st.selectbox("艶 / Finish", ["All／すべて"] + GLOSS_OPTIONS, format_func=gloss_label)
+            gloss_filter = st.selectbox(L("艶", "Finish"), ["All／すべて"] + GLOSS_OPTIONS, format_func=gloss_label)
         with sc5:
             order_filter = st.selectbox(L("発注状況", "Order"), ["All／すべて"] + ORDER_OPTIONS, format_func=order_label)
         with sc6:
             location_filter = st.text_input(L("📍 場所", "📍 Location"), placeholder="例: A-1")
         with sc7:
-            sort_mode = st.selectbox("並び替え / Sort", ["色番号順", "保有数順", "得意先順", "種類順", "場所順", "入荷日順"], format_func=sort_label)
+            sort_mode = st.selectbox(L("並び替え", "Sort"), ["色番号順", "保有数順", "得意先順", "種類順", "場所順", "入荷日順"], format_func=sort_label)
 
 owned = data[data["No"].astype(str).str.strip() != ""].copy()
 
@@ -1497,25 +1502,25 @@ else:
             st.rerun()
 
     st.sidebar.markdown("### 🎨 色系統 / Color")
-    _fam_button(f"▦　すべて（{len(_alld)}）", "all")
+    _fam_button(f"▦　{fam_label('すべて')}（{len(_alld)}）", "all")
     for _f in FAM_ORDER:
-        _fam_button(f"●　{_f}（{_fam_counts[_f]}）", _f)
+        _fam_button(f"●　{fam_label(_f)}（{_fam_counts[_f]}）", _f)
     st.sidebar.markdown("---")
-    _fam_button(f"⚠️　在庫切れ（{_out_cnt}）", "在庫切れ")
-    _fam_button(f"❗　期限注意（{_exp_cnt}）", "期限注意")
+    _fam_button(f"⚠️　{fam_label('在庫切れ')}（{_out_cnt}）", "在庫切れ")
+    _fam_button(f"❗　{fam_label('期限注意')}（{_exp_cnt}）", "期限注意")
 
     # ===== 検索結果ヘッダー + カード/リスト切替 =====
     _hc1, _hc2, _hc3 = st.columns([3, 1, 1])
     with _hc1:
-        _fam_label = "" if _cur in ("all", None) else f"　（絞り込み: {_cur}）"
-        st.markdown(f"##### 検索結果 {len(owned)} 件{_fam_label}")
+        _fam_label = "" if _cur in ("all", None) else f"　（{L('絞り込み', 'Filter')}: {fam_label(_cur)}）"
+        st.markdown(f"##### {L('検索結果', 'Results')} {len(owned)} {L('件', 'items')}{_fam_label}")
     _style = st.session_state.get("pc_list_style", "card")
     with _hc2:
-        if st.button("▦ カード表示", use_container_width=True, type=("primary" if _style == "card" else "secondary")):
+        if st.button(L("▦ カード表示", "▦ Cards"), use_container_width=True, type=("primary" if _style == "card" else "secondary")):
             st.session_state["pc_list_style"] = "card"
             st.rerun()
     with _hc3:
-        if st.button("☰ リスト表示", use_container_width=True, type=("primary" if _style == "list" else "secondary")):
+        if st.button(L("☰ リスト表示", "☰ List"), use_container_width=True, type=("primary" if _style == "list" else "secondary")):
             st.session_state["pc_list_style"] = "list"
             st.rerun()
 
@@ -1538,9 +1543,9 @@ else:
                     expiry_text, expiry_color = expiry_info(row.get("入荷日", ""), row.get("種類", ""))
                     qty = normalize_stock(row["保有数"])
                     location_text = str(row.get("保管場所", "")).strip() or "—"
-                    gloss_text = str(row.get("艶", "")).strip() or "—"
+                    gloss_text = gloss_label(str(row.get("艶", "")).strip() or "—")
                     maker_text = str(row.get("得意先", "")).strip() or "—"
-                    type_text = str(row.get("種類", "")).strip() or "—"
+                    type_text = type_label(str(row.get("種類", "")).strip() or "—")
                     exp_date = str(row.get("入荷日", ""))
                     order_status = str(row.get("発注状況", "")).strip()
                     order_badge_html = ""
@@ -1556,13 +1561,13 @@ else:
       <div style="font-size:12px;color:#5f6b7a;font-weight:700;">{row['No']}</div>
       <div style="font-size:17px;font-weight:800;line-height:1.3;word-break:break-all;">{row['名称']}</div>
       <div style="margin-top:5px;font-size:12.5px;color:#5f6b7a;display:grid;grid-template-columns:auto 1fr;gap:2px 10px;">
-        <span>メーカー</span><span style="color:#1c1e21;">{maker_text}</span>
-        <span>種類</span><span style="color:#1c1e21;">{type_text}</span>
-        <span>艶</span><span style="color:#1c1e21;">{gloss_text}</span>
-        <span>保管場所</span><span style="color:#2563eb;">{location_text}</span>
-        <span>有効期限</span><span style="color:{expiry_color};">{exp_date} ｜ {expiry_text}</span>
+        <span>{L('メーカー', 'Maker')}</span><span style="color:#1c1e21;">{maker_text}</span>
+        <span>{L('種類', 'Type')}</span><span style="color:#1c1e21;">{type_text}</span>
+        <span>{L('艶', 'Finish')}</span><span style="color:#1c1e21;">{gloss_text}</span>
+        <span>{L('保管場所', 'Location')}</span><span style="color:#2563eb;">{location_text}</span>
+        <span>{L('有効期限', 'Expiry')}</span><span style="color:{expiry_color};">{exp_date} ｜ {expiry_text}</span>
       </div>
-      <div style="margin-top:6px;font-size:12px;color:#5f6b7a;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">缶残量 {cans_html}</div>{order_badge_html}
+      <div style="margin-top:6px;font-size:12px;color:#5f6b7a;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">{L('缶残量', 'Stock')} {cans_html}</div>{order_badge_html}
     </div>
     <div style="text-align:right;flex:0 0 auto;">
       <div style="font-size:11px;color:#5f6b7a;">在庫数</div>
