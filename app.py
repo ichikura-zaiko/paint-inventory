@@ -80,6 +80,19 @@ def gloss_label(x):
             return s.split("／")[0]
         return _GLOSS_EN.get(s, s)
     return s
+_ORDER_EN = {"": "", "All／すべて": "All", "発注予定": "To order", "発注済み": "Ordered", "納品待ち": "Awaiting delivery"}
+def order_label(x):
+    if st.session_state.get("lang") == "en":
+        return _ORDER_EN.get(str(x), str(x))
+    return x
+_SORT_EN = {"色番号順": "Color No.", "保有数順": "Stock", "得意先順": "Customer", "種類順": "Type", "場所順": "Location", "入荷日順": "Arrival date"}
+def sort_label(x):
+    if st.session_state.get("lang") == "en":
+        s = str(x)
+        if " / " in s:
+            return s.split(" / ")[1]
+        return _SORT_EN.get(s, s)
+    return x
 # --- preserve scroll position across reruns (qty +/- etc.) ---
 st.markdown('<style>div[data-testid="stCustomComponent"]{height:0!important;min-height:0!important;margin:0!important;overflow:hidden!important;}</style>', unsafe_allow_html=True)
 components.html(
@@ -1007,7 +1020,7 @@ if is_mobile:
         type_filter = st.selectbox(L("カテゴリ", "Category"), ["All／すべて"] + types, format_func=type_label)
     with sf2:
         color_filter = st.selectbox(L("色系統", "Color"), ["All／すべて", "白系", "黒系", "グレー系", "赤系", "オレンジ系", "茶系", "黄系", "緑系", "青系", "紫系", "ピンク系"], format_func=color_label)
-    sort_mode = st.selectbox(L("並び順", "Sort"), ["色番号順 / No.", "保有数順 / Stock", "場所順 / Location", "入荷日順 / Date"])
+    sort_mode = st.selectbox(L("並び順", "Sort"), ["色番号順 / No.", "保有数順 / Stock", "場所順 / Location", "入荷日順 / Date"], format_func=sort_label)
     gloss_filter = "All／すべて"
     location_filter = ""
 
@@ -1032,12 +1045,12 @@ if is_mobile:
         with fb1:
             hex_color = st.color_picker("色 / Color", auto_hex)
         with fb2:
-            gloss = st.selectbox("艶 / Finish", GLOSS_OPTIONS)
+            gloss = st.selectbox("艶 / Finish", GLOSS_OPTIONS, format_func=gloss_label)
         fc1, fc2 = st.columns(2)
         with fc1:
             stock = st.number_input("保有数 / Stock", min_value=0.0, max_value=MAX_STOCK, step=STEP, value=0.0)
         with fc2:
-            order_status_input = st.selectbox("発注状況 / Order", ORDER_OPTIONS)
+            order_status_input = st.selectbox("発注状況 / Order", ORDER_OPTIONS, format_func=order_label)
         fd1, fd2 = st.columns(2)
         with fd1:
             received_date = st.date_input("入荷日 / Received", value=datetime.now().date(), min_value=datetime(1990, 1, 1).date(), max_value=datetime(2040, 12, 31).date())
@@ -1091,9 +1104,9 @@ else:
         with r2c1:
             hex_color = st.color_picker("色 / Color", auto_hex)
         with r2c2:
-            gloss = st.selectbox("艶 / Finish", GLOSS_OPTIONS)
+            gloss = st.selectbox("艶 / Finish", GLOSS_OPTIONS, format_func=gloss_label)
         with r2c3:
-            order_status_input = st.selectbox("発注状況 / Order", ORDER_OPTIONS)
+            order_status_input = st.selectbox("発注状況 / Order", ORDER_OPTIONS, format_func=order_label)
         with r2c4:
             stock = st.number_input("保有数 / Stock", min_value=0.0, max_value=MAX_STOCK, step=STEP)
         with r2c5:
@@ -1128,19 +1141,19 @@ else:
         # PC検索
         sc1, sc2, sc3, sc4, sc5, sc6, sc7 = st.columns([2, 1, 1, 1, 1, 1, 1])
         with sc1:
-            search = st.text_input("🔍 番号・名称・得意先・種類・場所", placeholder="Search...")
+            search = st.text_input(L("🔍 番号・名称・得意先・種類・場所", "🔍 No. / Name / Customer / Type / Location"), placeholder="Search...")
         with sc2:
             type_filter = st.selectbox("種類 / Type", ["All／すべて"] + types, format_func=type_label)
         with sc3:
             color_filter = st.selectbox("色系統 / Color", ["All／すべて", "白系", "黒系", "グレー系", "赤系", "オレンジ系", "茶系", "黄系", "緑系", "青系", "紫系", "ピンク系"], format_func=color_label)
         with sc4:
-            gloss_filter = st.selectbox("艶 / Finish", ["All／すべて"] + GLOSS_OPTIONS)
+            gloss_filter = st.selectbox("艶 / Finish", ["All／すべて"] + GLOSS_OPTIONS, format_func=gloss_label)
         with sc5:
-            order_filter = st.selectbox("発注状況", ["All／すべて"] + ORDER_OPTIONS)
+            order_filter = st.selectbox(L("発注状況", "Order"), ["All／すべて"] + ORDER_OPTIONS, format_func=order_label)
         with sc6:
-            location_filter = st.text_input("📍 場所", placeholder="例: A-1")
+            location_filter = st.text_input(L("📍 場所", "📍 Location"), placeholder="例: A-1")
         with sc7:
-            sort_mode = st.selectbox("並び替え / Sort", ["色番号順", "保有数順", "得意先順", "種類順", "場所順", "入荷日順"])
+            sort_mode = st.selectbox("並び替え / Sort", ["色番号順", "保有数順", "得意先順", "種類順", "場所順", "入荷日順"], format_func=sort_label)
 
 owned = data[data["No"].astype(str).str.strip() != ""].copy()
 
