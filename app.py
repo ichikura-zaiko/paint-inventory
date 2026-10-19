@@ -64,7 +64,7 @@ def L(ja, en):
     return en if st.session_state.get("lang") == "en" else ja
 _TYPE_EN = {"All／すべて": "All", "メラミン": "Melamine", "アクリル": "Acrylic", "ウレタン": "Urethane", "粉体": "Powder", "エポキシ": "Epoxy", "ラッカー": "Lacquer", "その他": "Other", "粉体ポリエステル": "Powder polyester", "粉体エポキシポリエステル": "Powder epoxy-PE", "粉体エポキシ": "Powder epoxy", "粉体ポリウレタン": "Powder PU", "粉体アクリル": "Powder acrylic"}
 _COLOR_EN = {"All／すべて": "All", "白系": "White", "黒系": "Black", "グレー系": "Gray", "赤系": "Red", "オレンジ系": "Orange", "茶系": "Brown", "黄系": "Yellow", "緑系": "Green", "青系": "Blue", "紫系": "Purple", "ピンク系": "Pink"}
-_GLOSS_EN = {"つや有": "Gloss", "つや消し": "Matte", "半艶": "Semi-gloss", "艶あり": "Gloss", "艶なし": "Matte", "3分艶": "30% gloss", "３分艶": "30% gloss", "7分艶": "70% gloss", "７分艶": "70% gloss", "全艶": "Full gloss"}
+_GLOSS_EN = {"つや有": "Gloss", "つや消し": "Matte", "半艶": "Semi-gloss", "艶あり": "Gloss", "艶なし": "Matte", "3分艶": "30% gloss", "３分艶": "30% gloss", "7分艶": "70% gloss", "７分艶": "70% gloss", "5分艶": "50% gloss", "５分艶": "50% gloss", "全艶": "Full gloss"}
 def type_label(x):
     if st.session_state.get("lang") == "en":
         return _TYPE_EN.get(str(x).strip(), str(x))
